@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  getLocalDisplayId,
+  useLocalDisplayId,
   ROLE_LABELS,
   useDeleteDisplay,
   useDisplays,
@@ -27,7 +27,7 @@ export default function DisplaysPage() {
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const localId = typeof window !== "undefined" ? getLocalDisplayId() : null;
+  const localId = useLocalDisplayId();
 
   const thisRegistered = displays.some((d) => d.id === localId);
 
@@ -105,7 +105,9 @@ export default function DisplaysPage() {
       <section aria-label="Registered screens" className="space-y-3">
         {displays.map((d) => {
           const online =
-            d.last_seen_at && Date.now() - new Date(d.last_seen_at).getTime() < 3 * 60 * 1000;
+            d.last_seen_at &&
+            // eslint-disable-next-line react-hooks/purity -- coarse online check; list re-renders on realtime updates
+            Date.now() - new Date(d.last_seen_at).getTime() < 3 * 60 * 1000;
           return (
             <div key={d.id} className="surface p-4">
               <div className="mb-3 flex items-center justify-between gap-3">

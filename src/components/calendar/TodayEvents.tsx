@@ -95,15 +95,18 @@ export function TodayEvents() {
     timeZone: timezone,
   });
 
+  // eslint-disable-next-line react-hooks/purity -- a coarse "now" for dimming past events; refreshed by the 5-minute refetch
+  const now = Date.now();
+
   return (
     <div className="surface p-4">
-      <p className="eyebrow mb-2.5">Today's calendar</p>
+      <p className="eyebrow mb-2.5">Today&apos;s calendar</p>
       {events.length === 0 ? (
         <p className="text-sm text-ink-faint">Nothing scheduled. The day is yours.</p>
       ) : (
         <ol className="flex flex-col gap-2">
           {events.slice(0, 6).map((e) => {
-            const past = e.endsAt && new Date(e.endsAt).getTime() < Date.now();
+            const past = e.endsAt && new Date(e.endsAt).getTime() < now;
             return (
               <li key={e.id} className={`flex items-baseline gap-3 ${past ? "opacity-45" : ""}`}>
                 <span className="tnum w-11 shrink-0 font-mono text-[12px] text-ink-faint">

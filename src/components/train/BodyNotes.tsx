@@ -58,7 +58,7 @@ export function BodyNotes() {
           label="Body area"
           value={bodyArea}
           onChange={(e) => setBodyArea(e.target.value)}
-          placeholder="Right shoulder"
+          
         />
         {withSeverity && <DotScale label="Severity" value={severity} onChange={setSeverity} />}
         <div className="flex items-end gap-2">
@@ -67,7 +67,7 @@ export function BodyNotes() {
               label="Note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Pinches at the top of the press"
+              
             />
           </div>
           <ActionButton

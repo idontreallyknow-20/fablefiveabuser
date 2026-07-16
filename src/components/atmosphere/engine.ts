@@ -60,7 +60,7 @@ export function mulberry32(seed: number) {
 }
 
 export function gateIntensity(layer: SceneLayerConfig, env: SceneEnv): number {
-  let v = layer.intensity;
+  const v = layer.intensity;
   if (layer.weather && layer.weather.length > 0 && !layer.weather.includes("any")) {
     if (!layer.weather.includes(env.weather.kind)) return 0;
   }

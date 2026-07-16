@@ -141,7 +141,7 @@ export function DisplayFitness() {
     <div className="mx-auto w-full max-w-2xl space-y-8">
       <Clock size="compact" />
       <div className="surface p-4">
-        <p className="eyebrow mb-2.5">Today's session</p>
+        <p className="eyebrow mb-2.5">Today&apos;s session</p>
         {data?.session ? (
           <p className="text-sm text-ink-dim">
             {data.session.split || "Training"} ·{" "}

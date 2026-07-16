@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useSettings } from "@/lib/settings/store";
@@ -8,6 +8,8 @@ import { Toggle } from "@/components/ui/Segmented";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import type { Tables } from "@/lib/db/types";
+
+const permissionListeners = new Set<() => void>();
 
 const CATEGORY_LABELS: Record<string, string> = {
   tasks: "Tasks and priorities",
@@ -56,11 +58,14 @@ export default function NotificationsPage() {
   const qc = useQueryClient();
   const { settings, set } = useSettings();
   const { toast } = useToast();
-  const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
-
-  useEffect(() => {
-    setPermission(typeof Notification === "undefined" ? "unsupported" : Notification.permission);
-  }, []);
+  const permission = useSyncExternalStore(
+    (onChange) => {
+      permissionListeners.add(onChange);
+      return () => permissionListeners.delete(onChange);
+    },
+    () => (typeof Notification === "undefined" ? ("unsupported" as const) : Notification.permission),
+    () => "default" as const,
+  );
 
   const togglePref = useMutation({
     mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
@@ -86,7 +91,7 @@ export default function NotificationsPage() {
   const requestPermission = async () => {
     if (typeof Notification === "undefined") return;
     const p = await Notification.requestPermission();
-    setPermission(p);
+    permissionListeners.forEach((l) => l());
     if (p === "granted") toast("Notifications enabled on this device", "success");
   };
 

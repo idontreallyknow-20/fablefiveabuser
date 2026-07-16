@@ -95,7 +95,7 @@ function SpotifySection() {
 }
 
 function GoogleSection() {
-  const { data: status, refetch } = useCalendarStatus();
+  const { data: status } = useCalendarStatus();
   const qc = useQueryClient();
   const { toast } = useToast();
 

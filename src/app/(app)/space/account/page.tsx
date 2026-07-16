@@ -31,17 +31,24 @@ export default function AccountPage() {
   const [pin, setPin] = useState("");
   const [email, setEmail] = useState<string>("");
 
-  useEffect(() => {
-    if (profile) {
-      setDisplayName(profile.display_name);
-      setAppName(profile.app_name);
-    }
-  }, [profile]);
+  // sync form fields once per loaded profile (render-derived state)
+  const [loadedProfileId, setLoadedProfileId] = useState<string | null>(null);
+  if (profile && loadedProfileId !== profile.id) {
+    setLoadedProfileId(profile.id);
+    setDisplayName(profile.display_name);
+    setAppName(profile.app_name);
+  }
 
   useEffect(() => {
+    let cancelled = false;
     supabaseBrowser()
       .auth.getUser()
-      .then(({ data }) => setEmail(data.user?.email ?? ""));
+      .then(({ data }) => {
+        if (!cancelled) setEmail(data.user?.email ?? "");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

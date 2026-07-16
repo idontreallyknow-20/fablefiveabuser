@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Tables, TablesUpdate } from "@/lib/db/types";
@@ -9,6 +9,7 @@ export type Display = Tables<"displays">;
 export type DisplayRole = Display["role"];
 
 const LOCAL_KEY = "orbit-display-id";
+const localIdListeners = new Set<() => void>();
 
 export function getLocalDisplayId(): string | null {
   if (typeof window === "undefined") return null;
@@ -18,6 +19,23 @@ export function getLocalDisplayId(): string | null {
 export function setLocalDisplayId(id: string | null) {
   if (id) localStorage.setItem(LOCAL_KEY, id);
   else localStorage.removeItem(LOCAL_KEY);
+  localIdListeners.forEach((l) => l());
+}
+
+/** render-safe access to this screen's registration */
+export function useLocalDisplayId(): string | null {
+  return useSyncExternalStore(
+    (onChange) => {
+      localIdListeners.add(onChange);
+      window.addEventListener("storage", onChange);
+      return () => {
+        localIdListeners.delete(onChange);
+        window.removeEventListener("storage", onChange);
+      };
+    },
+    getLocalDisplayId,
+    () => null,
+  );
 }
 
 export function useDisplays() {

@@ -150,7 +150,7 @@ function SplitPicker({ date }: { date: string }) {
             label="Or something of your own"
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
-            placeholder="Handstand practice"
+            
           />
         </div>
         <Button type="submit" size="md" disabled={!custom.trim() || create.isPending}>
@@ -245,7 +245,7 @@ function SessionNotes({ session }: { session: WorkoutSession }) {
       onBlur={() => {
         if (notes !== session.notes) update.mutate({ id: session.id, patch: { notes } });
       }}
-      placeholder="How it felt, what to adjust next time"
+      
     />
   );
 }
@@ -353,7 +353,7 @@ function EntryComposer({ sessionId, entries }: { sessionId: string; entries: Wor
               inputMode="numeric"
               value={rpe}
               onChange={(e) => setRpe(e.target.value)}
-              placeholder="7"
+              
             />
           </div>
           <div className="mt-3 flex items-end gap-2">
@@ -362,7 +362,7 @@ function EntryComposer({ sessionId, entries }: { sessionId: string; entries: Wor
                 label="Form note (optional)"
                 value={formNote}
                 onChange={(e) => setFormNote(e.target.value)}
-                placeholder="Elbows tucked, slower descent"
+                
               />
             </div>
             <ActionButton variant="primary" size="md" disabled={!hasValue} onAction={add}>
@@ -408,7 +408,7 @@ function NewExerciseModal({
           label="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Weighted dip"
+          
         />
         <LabeledSelect
           label="Category"

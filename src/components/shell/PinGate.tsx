@@ -1,7 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useSettings } from "@/lib/settings/store";
+
+// session unlock flag as an external store so render stays pure
+const unlockListeners = new Set<() => void>();
+function readUnlocked() {
+  return sessionStorage.getItem("orbit-unlocked") === "1";
+}
+function setUnlocked() {
+  sessionStorage.setItem("orbit-unlocked", "1");
+  unlockListeners.forEach((l) => l());
+}
+function useUnlocked() {
+  return useSyncExternalStore(
+    (onChange) => {
+      unlockListeners.add(onChange);
+      return () => unlockListeners.delete(onChange);
+    },
+    readUnlocked,
+    () => true, // server: render nothing until the client knows
+  );
+}
 
 async function sha256(text: string): Promise<string> {
   const data = new TextEncoder().encode(text);
@@ -17,22 +37,15 @@ async function sha256(text: string): Promise<string> {
  */
 export function PinGate() {
   const pinLock = useSettings((s) => s.settings.pinLock);
-  const [locked, setLocked] = useState(false);
+  const unlocked = useUnlocked();
   const [pin, setPin] = useState("");
   const [wrong, setWrong] = useState(false);
 
-  useEffect(() => {
-    if (pinLock.enabled && !sessionStorage.getItem("orbit-unlocked")) {
-      setLocked(true);
-    }
-  }, [pinLock.enabled]);
-
-  if (!locked) return null;
+  if (!pinLock.enabled || unlocked) return null;
 
   const tryUnlock = async (value: string) => {
     if ((await sha256(value)) === pinLock.hash) {
-      sessionStorage.setItem("orbit-unlocked", "1");
-      setLocked(false);
+      setUnlocked();
     } else {
       setWrong(true);
       setPin("");

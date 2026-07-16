@@ -72,7 +72,7 @@ export function CloseToYou() {
           label="Title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Ask how the week really went"
+          
         />
         <div className="flex items-end gap-2">
           <div className="flex-1">

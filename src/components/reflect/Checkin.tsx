@@ -101,7 +101,7 @@ function CheckinForm({ date, initial }: { date: string; initial: CheckinRow | nu
           rows={2}
           value={form.note}
           onChange={(e) => commit({ note: e.target.value })}
-          placeholder="However today actually was"
+          
         />
         <Field
           label="What helped"

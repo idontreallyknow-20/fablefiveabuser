@@ -1,21 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getLocalDisplayId } from "@/lib/displays/useDisplays";
+import { useLocalDisplayId } from "@/lib/displays/useDisplays";
 
 export default function DisplayRedirect() {
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
+  const localId = useLocalDisplayId();
 
   useEffect(() => {
-    const id = getLocalDisplayId();
-    if (id) router.replace(`/display/${id}`);
-    else setChecked(true);
-  }, [router]);
+    if (localId) router.replace(`/display/${localId}`);
+  }, [router, localId]);
 
-  if (!checked) return null;
+  if (localId) return null;
 
   return (
     <main className="relative z-10 flex min-h-dvh flex-col items-center justify-center gap-3 px-6 text-center">

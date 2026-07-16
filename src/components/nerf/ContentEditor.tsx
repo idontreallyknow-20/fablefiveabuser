@@ -168,7 +168,7 @@ function ContentEditorForm({ item, onClose }: { item: NerfItem; onClose: () => v
                 label="Format"
                 value={format}
                 onChange={(e) => setFormat(e.target.value)}
-                placeholder="talking head"
+                
                 className="!h-9 text-[13px]"
               />
             </div>
