@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/Icons";
 import { useSettings } from "@/lib/settings/store";
 import { useProfile } from "@/lib/data/profile";
+import { PinGate } from "@/components/shell/PinGate";
+import { AutoTheme } from "@/components/shell/AutoTheme";
+import { NotificationEngine } from "@/components/shell/NotificationEngine";
 
 const NAV = [
   { href: "/today", label: "Today", icon: IconToday },
@@ -61,6 +64,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="relative min-h-dvh">
         <AtmosphereCanvas />
+        <AutoTheme />
+        <NotificationEngine />
+        <PinGate />
         {children}
       </div>
     );
@@ -69,6 +75,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative min-h-dvh">
       <AtmosphereCanvas />
+      <AutoTheme />
+      <PinGate />
 
       {/* desktop rail */}
       <nav

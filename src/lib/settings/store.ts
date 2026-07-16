@@ -43,6 +43,25 @@ export interface OrbitSettings {
   location: { name: string; lat: number; lon: number; timezone: string };
   quietHours: { enabled: boolean; start: string; end: string };
   pinLock: { enabled: boolean; hash: string };
+  /** self-reported energy for today's Guide recommendations */
+  energyToday: "low" | "medium" | "high" | null;
+  /** spotify uri of the playlist offered in focus mode */
+  focusPlaylistUri: string | null;
+  /** today layout preset + individually hidden widgets */
+  layoutPreset: "command" | "calm" | "music" | "project" | "calendar" | "mobile";
+  hiddenWidgets: string[];
+  /** manual scene overrides; null follows reality */
+  weatherOverride: "rain" | "drizzle" | "snow" | "fog" | "clear" | "clouds" | "storm" | null;
+  phaseOverride:
+    | "predawn"
+    | "sunrise"
+    | "morning"
+    | "midday"
+    | "golden"
+    | "sunset"
+    | "blue-hour"
+    | "night"
+    | null;
 }
 
 export const DEFAULT_SETTINGS: OrbitSettings = {
@@ -80,6 +99,12 @@ export const DEFAULT_SETTINGS: OrbitSettings = {
   },
   quietHours: { enabled: true, start: "23:00", end: "08:00" },
   pinLock: { enabled: false, hash: "" },
+  energyToday: null,
+  focusPlaylistUri: null,
+  layoutPreset: "command",
+  hiddenWidgets: [],
+  weatherOverride: null,
+  phaseOverride: null,
 };
 
 interface SettingsState {

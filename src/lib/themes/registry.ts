@@ -113,7 +113,7 @@ export const THEMES: Record<ThemeId, ThemeDef> = {
     sky: { top: "#0d0a08", mid: "#151009", horizon: "#1d150c" },
     layers: [
       { effect: "sky-gradient", intensity: 1, depth: 0 },
-      { effect: "city-lights", intensity: 0.5, depth: 0.2 },
+      { effect: "city-lights", intensity: 0.35, depth: 0.15 },
       { effect: "rain", intensity: 0.45, depth: 0.5, weather: ["rain", "drizzle", "storm"] },
       { effect: "lamp-glow", intensity: 0.8, depth: 0.9 },
       { effect: "dust", intensity: 0.3, depth: 0.95 },

@@ -15,7 +15,6 @@ export function getDayPhase(date: Date, lat: number, lon: number): DayPhase {
   const goldenEnd = at(t.goldenHourEnd);
   const goldenStart = at(t.goldenHour);
   const sunsetStart = at(t.sunsetStart);
-  const sunset = at(t.sunset);
   const dusk = at(t.dusk);
   const nauticalDawn = at(t.nauticalDawn);
 

@@ -9,6 +9,7 @@ import { TodayEvents, nextEventOf, useCalendarStatus, useTodayEvents } from "@/c
 import { RoutinesDue } from "@/components/routines/RoutinesDue";
 import { IconAmbient, IconFocus } from "@/components/ui/Icons";
 import { useSettings } from "@/lib/settings/store";
+import { presetById, visibleWidgets } from "@/lib/settings/layout";
 
 function NextEventMeta() {
   const { data: status } = useCalendarStatus();
@@ -33,6 +34,15 @@ function NextEventMeta() {
 }
 
 export default function TodayPage() {
+  const layoutPreset = useSettings((s) => s.settings.layoutPreset);
+  const hiddenWidgets = useSettings((s) => s.settings.hiddenWidgets);
+  const preset = presetById(layoutPreset);
+  const widgets = visibleWidgets(layoutPreset, hiddenWidgets);
+  const sideWidgets = ["player", "calendar", "routines"].filter((w) =>
+    widgets.has(w as "player" | "calendar" | "routines"),
+  );
+  const showPriorities = widgets.has("priorities");
+
   return (
     <div className="flex min-h-[calc(100dvh-8rem)] flex-col">
       <header className="rise mb-10 mt-[4vh] flex flex-wrap items-end justify-between gap-6 md:mt-[6vh]">
@@ -64,21 +74,41 @@ export default function TodayPage() {
         </div>
       </header>
 
-      <div className="grid flex-1 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] xl:gap-12">
-        <div>
-          <Priorities />
-        </div>
-        <div className="flex flex-col gap-3">
-          <div className="rise" style={{ "--stagger-i": 2 } as React.CSSProperties}>
-            <PlayerCard />
+      <div
+        className={`grid flex-1 grid-cols-1 gap-8 xl:gap-12 ${
+          showPriorities && sideWidgets.length > 0
+            ? preset.prioritiesFirst
+              ? "lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]"
+              : "lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"
+            : "lg:max-w-2xl"
+        }`}
+      >
+        {showPriorities && preset.prioritiesFirst && <Priorities />}
+        {sideWidgets.length > 0 && (
+          <div className="flex flex-col gap-3">
+            {sideWidgets.includes("calendar") && !preset.prioritiesFirst && (
+              <div className="rise" style={{ "--stagger-i": 2 } as React.CSSProperties}>
+                <TodayEvents />
+              </div>
+            )}
+            {sideWidgets.includes("player") && (
+              <div className="rise" style={{ "--stagger-i": 2 } as React.CSSProperties}>
+                <PlayerCard />
+              </div>
+            )}
+            {sideWidgets.includes("calendar") && preset.prioritiesFirst && (
+              <div className="rise" style={{ "--stagger-i": 3 } as React.CSSProperties}>
+                <TodayEvents />
+              </div>
+            )}
+            {sideWidgets.includes("routines") && (
+              <div className="rise" style={{ "--stagger-i": 4 } as React.CSSProperties}>
+                <RoutinesDue />
+              </div>
+            )}
           </div>
-          <div className="rise" style={{ "--stagger-i": 3 } as React.CSSProperties}>
-            <TodayEvents />
-          </div>
-          <div className="rise" style={{ "--stagger-i": 4 } as React.CSSProperties}>
-            <RoutinesDue />
-          </div>
-        </div>
+        )}
+        {showPriorities && !preset.prioritiesFirst && <Priorities />}
       </div>
     </div>
   );

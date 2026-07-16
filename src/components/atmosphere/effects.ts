@@ -1,7 +1,7 @@
 // Original effect implementations for the Orbit atmosphere engine.
 // Techniques: pooled particles, seeded layouts, offscreen noise tiles.
 
-import type { EffectFactory, EffectRenderer, EffectState } from "./engine";
+import type { EffectFactory } from "./engine";
 import { mulberry32 } from "./engine";
 
 const TAU = Math.PI * 2;
@@ -823,6 +823,21 @@ export const moon: EffectFactory = () => ({
 export const lampGlow: EffectFactory = () => ({
   draw(ctx, s) {
     const { w, h, t, intensity } = s;
+
+    // the room: a window frame between you and the city
+    ctx.fillStyle = "rgba(9, 6, 4, 0.88)";
+    const frameW = Math.max(10, w * 0.012);
+    // mullions at thirds
+    ctx.fillRect(w * 0.333 - frameW / 2, 0, frameW, h * 0.97);
+    ctx.fillRect(w * 0.667 - frameW / 2, 0, frameW, h * 0.97);
+    // sill
+    ctx.fillRect(0, h * 0.955, w, h * 0.02);
+    // corner vignette: the unlit parts of the room
+    const vg = ctx.createRadialGradient(w * 0.5, h * 0.45, h * 0.3, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(10, 6, 3, 0.55)");
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, w, h);
     // desk lamp pool, bottom right; breathing very slowly
     const breathe = 0.96 + 0.04 * Math.sin(t * 0.5);
     const x = w * 0.85;

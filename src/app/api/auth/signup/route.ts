@@ -64,6 +64,10 @@ export async function GET() {
   if (env.publicSignupsEnabled) {
     return NextResponse.json({ open: true });
   }
-  const { data: count } = await anon.rpc("profile_count");
+  const { data: count, error } = await anon.rpc("profile_count");
+  if (error) {
+    // fail closed: registration stays hidden if availability is unknown
+    return NextResponse.json({ open: false, unavailable: true });
+  }
   return NextResponse.json({ open: (count ?? 0) === 0, bootstrap: (count ?? 0) === 0 });
 }

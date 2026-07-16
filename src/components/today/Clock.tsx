@@ -1,16 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { useSettings } from "@/lib/settings/store";
 
 function useNow(intervalMs = 1000) {
-  const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => {
-    setNow(new Date());
-    const id = setInterval(() => setNow(new Date()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return now;
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const id = setInterval(onChange, intervalMs);
+      return () => clearInterval(id);
+    },
+    [intervalMs],
+  );
+  // stable numeric snapshot; 0 on the server so hydration stays clean
+  const seconds = useSyncExternalStore(
+    subscribe,
+    () => Math.floor(Date.now() / 1000),
+    () => 0,
+  );
+  return seconds === 0 ? null : new Date(seconds * 1000);
 }
 
 /**
