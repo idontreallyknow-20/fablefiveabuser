@@ -12,6 +12,7 @@ import {
 } from "@/lib/data/tasks";
 import { useProjects } from "@/lib/data/projects";
 import { recommendPriorities } from "@/lib/guide/guide";
+import { useSettings } from "@/lib/settings/store";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Field, TextArea } from "@/components/ui/Field";
@@ -163,6 +164,7 @@ export function Priorities() {
   const actions = useTaskActions();
   const create = useCreateTask();
   const { toast } = useToast();
+  const energyToday = useSettings((s) => s.settings.energyToday);
 
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
   const [quickTitle, setQuickTitle] = useState("");
@@ -177,7 +179,7 @@ export function Priorities() {
     const ctx = {
       now: new Date(),
       freeMinutes: null,
-      energy: null,
+      energy: energyToday,
       projectPriority: new Map(projects.map((p) => [p.id, p.priority])),
       completedIds: new Set<string>(),
       focusProjectIds: new Set<string>(),
@@ -188,7 +190,7 @@ export function Priorities() {
       ctx,
       3,
     );
-  }, [backlog, priorities, projects]);
+  }, [backlog, priorities, projects, energyToday]);
 
   const pick = async (task: Task) => {
     if (pickerSlot === null) return;

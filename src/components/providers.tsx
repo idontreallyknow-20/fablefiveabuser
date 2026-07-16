@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { SettingsSync } from "@/lib/settings/SettingsSync";
 import { ToastProvider } from "@/components/ui/Toast";
+import { ServiceWorker } from "@/components/shell/ServiceWorker";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -23,6 +24,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <SettingsSync />
+        <ServiceWorker />
         {children}
       </ToastProvider>
     </QueryClientProvider>

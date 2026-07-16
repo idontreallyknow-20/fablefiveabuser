@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { IconSpotify } from "@/components/ui/Icons";
 import { useSpotifyStatus, useSpotifyPlayback } from "@/lib/spotify/useSpotify";
 import { PlayerControls } from "./PlayerControls";
+import { PlayerExpanded } from "./PlayerExpanded";
+import { WebPlayer } from "./WebPlayer";
 
 /**
  * Compact player for Today and side displays. Shows honest states:
@@ -13,6 +16,7 @@ import { PlayerControls } from "./PlayerControls";
 export function PlayerCard() {
   const { data: status } = useSpotifyStatus();
   const playback = useSpotifyPlayback(Boolean(status?.connected));
+  const [expanded, setExpanded] = useState(false);
 
   if (!status) {
     return <div className="surface h-[104px] animate-pulse" aria-hidden />;
@@ -56,7 +60,20 @@ export function PlayerCard() {
 
   return (
     <div className="surface p-4">
-      <div className="flex items-center gap-3.5">
+      <WebPlayer />
+      <div
+        className="flex cursor-pointer items-center gap-3.5"
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("button")) return;
+          setExpanded(true);
+        }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") setExpanded(true);
+        }}
+        aria-label="Open the full player"
+      >
         {track?.albumArt ? (
           // eslint-disable-next-line @next/next/no-img-element -- Spotify CDN artwork must be hotlinked per their terms
           <img
@@ -95,6 +112,7 @@ export function PlayerCard() {
           </div>
         </div>
       )}
+      <PlayerExpanded open={expanded} onClose={() => setExpanded(false)} playback={playback} />
     </div>
   );
 }

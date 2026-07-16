@@ -85,7 +85,7 @@ export function AtmosphereCanvas({
   }, [themeId, phase]);
 
   const env = useMemo<SceneEnv>(() => {
-    const w: SceneWeather =
+    const base: SceneWeather =
       settings.weatherReactive && weather
         ? {
             kind: weather.current.kind,
@@ -96,13 +96,35 @@ export function AtmosphereCanvas({
             isStorm: weather.current.isStorm,
           }
         : CALM_WEATHER;
+    const w: SceneWeather = settings.weatherOverride
+      ? {
+          ...base,
+          kind: settings.weatherOverride,
+          isStorm: settings.weatherOverride === "storm",
+          precipitation:
+            settings.weatherOverride === "rain" || settings.weatherOverride === "storm"
+              ? Math.max(base.precipitation, 2)
+              : settings.weatherOverride === "snow"
+                ? Math.max(base.precipitation, 1.5)
+                : settings.weatherOverride === "drizzle"
+                  ? 0.6
+                  : 0,
+          cloudCover:
+            settings.weatherOverride === "clear"
+              ? 0.05
+              : settings.weatherOverride === "clouds" || settings.weatherOverride === "storm"
+                ? 0.85
+                : base.cloudCover,
+          visibility: settings.weatherOverride === "fog" ? 0.2 : base.visibility,
+        }
+      : base;
     const still = prefersReduced || settings.reducedMotion || settings.motion === "low";
     const quality =
       (settings.motion === "cinematic" ? 1.5 : settings.motion === "low" ? 0.45 : 1) *
       detectAutoQuality();
     return {
       weather: w,
-      phase: settings.timeReactive ? phase : "night",
+      phase: settings.phaseOverride ?? (settings.timeReactive ? phase : "night"),
       moonPhase: getMoonIllumination(new Date()),
       quality,
       still,
