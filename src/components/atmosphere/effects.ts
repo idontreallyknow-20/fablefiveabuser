@@ -1,0 +1,879 @@
+// Original effect implementations for the Orbit atmosphere engine.
+// Techniques: pooled particles, seeded layouts, offscreen noise tiles.
+
+import type { EffectFactory, EffectRenderer, EffectState } from "./engine";
+import { mulberry32 } from "./engine";
+
+const TAU = Math.PI * 2;
+
+/* ------------------------------------------------------------------ sky -- */
+
+const PHASE_TINT: Record<string, { top: string; horizon: string; alpha: number }> = {
+  predawn: { top: "#0b1026", horizon: "#2b2036", alpha: 0.5 },
+  sunrise: { top: "#1a2038", horizon: "#8a5a3c", alpha: 0.55 },
+  morning: { top: "#2a3d5c", horizon: "#63758e", alpha: 0.5 },
+  midday: { top: "#33517a", horizon: "#7d92ab", alpha: 0.5 },
+  golden: { top: "#2c2f4a", horizon: "#9a6a3a", alpha: 0.55 },
+  sunset: { top: "#191c38", horizon: "#7c4634", alpha: 0.55 },
+  "blue-hour": { top: "#0c1230", horizon: "#28355c", alpha: 0.55 },
+  night: { top: "#000000", horizon: "#000000", alpha: 0 },
+};
+
+export const skyGradient: EffectFactory = () => ({
+  draw(ctx, s) {
+    const { w, h, theme, env } = s;
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, theme.sky.top);
+    g.addColorStop(0.55, theme.sky.mid);
+    g.addColorStop(1, theme.sky.horizon);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+
+    // time-of-day tint (only for time-reactive themes)
+    if (theme.timeReactive) {
+      const tint = PHASE_TINT[env.phase];
+      if (tint && tint.alpha > 0) {
+        const tg = ctx.createLinearGradient(0, 0, 0, h);
+        tg.addColorStop(0, tint.top);
+        tg.addColorStop(1, tint.horizon);
+        ctx.globalAlpha = tint.alpha * 0.45;
+        ctx.globalCompositeOperation = "screen";
+        ctx.fillStyle = tg;
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // music glow: a faint pool of album color low in the scene
+    if (env.glowColor) {
+      const r = Math.max(w, h) * 0.5;
+      const gg = ctx.createRadialGradient(w * 0.78, h * 0.92, 0, w * 0.78, h * 0.92, r);
+      gg.addColorStop(0, env.glowColor);
+      gg.addColorStop(1, "transparent");
+      ctx.globalAlpha = 0.07;
+      ctx.globalCompositeOperation = "screen";
+      ctx.fillStyle = gg;
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
+    }
+  },
+});
+
+/* ----------------------------------------------------------------- rain -- */
+
+interface Drop {
+  x: number;
+  y: number;
+  len: number;
+  speed: number;
+  alpha: number;
+}
+
+export const rain: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let drops: Drop[] = [];
+  let flash = 0;
+  let nextFlash = 20 + rng() * 30;
+
+  const spawn = (w: number, h: number, n: number) => {
+    drops = Array.from({ length: n }, () => ({
+      x: rng() * w,
+      y: rng() * h,
+      len: 8 + rng() * 18,
+      speed: 380 + rng() * 520,
+      alpha: 0.05 + rng() * 0.16,
+    }));
+  };
+
+  return {
+    resize(w, h) {
+      spawn(w, h, Math.round((w / 6) * 1));
+    },
+    draw(ctx, s) {
+      const { w, h, dt, env, intensity, depth, px } = s;
+      const target = Math.round((w / 6) * intensity * env.quality *
+        Math.min(1.6, 0.5 + env.weather.precipitation * 0.35));
+      if (drops.length === 0) spawn(w, h, Math.max(24, target));
+      const count = Math.min(drops.length, Math.max(24, target));
+      const wind = (env.weather.windKph / 60) * 14 + px * 6;
+
+      ctx.strokeStyle = "rgb(178, 199, 235)";
+      ctx.lineCap = "round";
+      for (let i = 0; i < count; i++) {
+        const d = drops[i];
+        d.y += d.speed * dt * (0.5 + depth * 0.7);
+        d.x += wind * dt * d.speed * 0.05;
+        if (d.y > h + d.len) {
+          d.y = -d.len - rng() * 40;
+          d.x = rng() * (w + 80) - 40;
+        }
+        ctx.globalAlpha = d.alpha * (0.55 + depth * 0.45);
+        ctx.lineWidth = depth > 0.6 ? 1.2 : 0.8;
+        ctx.beginPath();
+        ctx.moveTo(d.x, d.y);
+        ctx.lineTo(d.x - wind * 0.35, d.y - d.len * (0.7 + depth * 0.6));
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      // rare lightning, only in a real storm and only at cinematic quality
+      if (env.weather.isStorm && env.quality > 1.2 && !env.still) {
+        nextFlash -= dt;
+        if (nextFlash <= 0) {
+          flash = 0.55;
+          nextFlash = 24 + rng() * 46;
+        }
+        if (flash > 0.01) {
+          ctx.globalAlpha = flash * 0.5;
+          ctx.fillStyle = "#cdd8ee";
+          ctx.fillRect(0, 0, w, h);
+          ctx.globalAlpha = 1;
+          flash *= Math.exp(-dt * 6);
+        }
+      }
+    },
+  };
+};
+
+/* --------------------------------------------------- droplets on glass -- */
+
+interface Bead {
+  x: number;
+  y: number;
+  r: number;
+  vy: number;
+  wob: number;
+  sliding: boolean;
+}
+
+export const droplets: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let beads: Bead[] = [];
+
+  const spawn = (w: number, h: number, n: number) => {
+    beads = Array.from({ length: n }, () => ({
+      x: rng() * w,
+      y: rng() * h,
+      r: 0.6 + rng() * 2.4,
+      vy: 0,
+      wob: rng() * TAU,
+      sliding: false,
+    }));
+  };
+
+  const drawBead = (ctx: CanvasRenderingContext2D, b: Bead) => {
+    const g = ctx.createRadialGradient(
+      b.x - b.r * 0.35,
+      b.y - b.r * 0.45,
+      b.r * 0.1,
+      b.x,
+      b.y,
+      b.r,
+    );
+    g.addColorStop(0, "rgba(210, 226, 250, 0.34)");
+    g.addColorStop(0.6, "rgba(160, 185, 220, 0.13)");
+    g.addColorStop(1, "rgba(20, 30, 50, 0.16)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, TAU);
+    ctx.fill();
+  };
+
+  return {
+    resize(w, h) {
+      spawn(w, h, Math.round(w / 22));
+    },
+    draw(ctx, s) {
+      const { w, h, dt, env, intensity } = s;
+      if (beads.length === 0) spawn(w, h, Math.round(w / 22));
+      const wet = Math.min(1.4, 0.35 + env.weather.precipitation * 0.4) * intensity * env.quality;
+      const count = Math.min(beads.length, Math.round((w / 22) * wet));
+
+      for (let i = 0; i < count; i++) {
+        const b = beads[i];
+        // growth while stuck; slide once heavy
+        if (!b.sliding) {
+          b.r += dt * 0.16 * wet;
+          if (b.r > 2.6 + rng() * 2.2) b.sliding = true;
+        } else {
+          b.vy = Math.min(60, b.vy + dt * 40);
+          b.wob += dt * 7;
+          b.y += b.vy * dt;
+          b.x += Math.sin(b.wob) * 0.35;
+          b.r = Math.max(1.2, b.r - dt * 0.5);
+          if (b.r <= 1.25) b.sliding = false;
+        }
+        if (b.y > h + 6) {
+          b.y = -6;
+          b.x = rng() * w;
+          b.r = 0.6 + rng() * 1.6;
+          b.vy = 0;
+          b.sliding = false;
+        }
+        drawBead(ctx, b);
+      }
+    },
+  };
+};
+
+/* ------------------------------------------------------------------ fog -- */
+
+export const fog: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let tile: HTMLCanvasElement | null = null;
+
+  const makeTile = () => {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 256;
+    const g = c.getContext("2d")!;
+    for (let i = 0; i < 46; i++) {
+      const x = rng() * 512;
+      const y = rng() * 256;
+      const r = 40 + rng() * 90;
+      const grad = g.createRadialGradient(x, y, 0, x, y, r);
+      grad.addColorStop(0, "rgba(190, 205, 225, 0.05)");
+      grad.addColorStop(1, "transparent");
+      g.fillStyle = grad;
+      g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    return c;
+  };
+
+  return {
+    draw(ctx, s) {
+      const { w, h, t, env, intensity, py } = s;
+      if (!tile) tile = makeTile();
+      const haze = intensity * (1.35 - env.weather.visibility) + intensity * 0.35;
+      const bands = env.quality > 0.7 ? 3 : 2;
+      for (let b = 0; b < bands; b++) {
+        const speed = 6 + b * 5;
+        const off = ((t * speed) % 512);
+        const y = h * (0.35 + b * 0.22) + py * 8 * (b + 1);
+        ctx.globalAlpha = Math.min(0.9, haze) * (0.5 - b * 0.12);
+        for (let x = -off - 512; x < w + 512; x += 512) {
+          ctx.drawImage(tile, x, y, 512, 300 + b * 60);
+        }
+      }
+      ctx.globalAlpha = 1;
+    },
+  };
+};
+
+/* ---------------------------------------------------------------- stars -- */
+
+export const stars: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let pts: { x: number; y: number; r: number; tw: number; sp: number }[] = [];
+
+  return {
+    resize(w, h) {
+      const n = Math.round((w * h) / 5200);
+      pts = Array.from({ length: n }, () => ({
+        x: rng() * w,
+        y: rng() * h * 0.85,
+        r: rng() < 0.85 ? 0.7 + rng() * 0.7 : 1.3 + rng() * 1.1,
+        tw: rng() * TAU,
+        sp: 0.3 + rng() * 1.4,
+      }));
+    },
+    draw(ctx, s) {
+      const { w, h, t, env, intensity, px, py } = s;
+      if (pts.length === 0) this.resize?.(w, h);
+      // stars fade with cloud cover
+      const vis = intensity * (1 - env.weather.cloudCover * 0.85) * env.quality;
+      if (vis <= 0.02) return;
+      ctx.fillStyle = "#dbe6f7";
+      for (const p of pts) {
+        const twinkle = 0.55 + 0.45 * Math.sin(p.tw + t * p.sp);
+        ctx.globalAlpha = Math.min(1, vis) * twinkle * 0.8;
+        ctx.beginPath();
+        ctx.arc(p.x + px * 6, p.y + py * 4, p.r, 0, TAU);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    },
+  };
+};
+
+export const shootingStars: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let active: { x: number; y: number; vx: number; vy: number; life: number } | null = null;
+  let next = 14 + rng() * 26;
+
+  return {
+    draw(ctx, s) {
+      const { w, h, dt, env, intensity } = s;
+      if (env.still || env.weather.cloudCover > 0.6) return;
+      next -= dt;
+      if (!active && next <= 0) {
+        const ang = Math.PI * (0.15 + rng() * 0.2);
+        active = {
+          x: w * (0.2 + rng() * 0.6),
+          y: h * (0.05 + rng() * 0.25),
+          vx: Math.cos(ang) * 640,
+          vy: Math.sin(ang) * 640,
+          life: 0.9,
+        };
+        next = 18 + rng() * 34;
+      }
+      if (active) {
+        active.life -= dt;
+        active.x += active.vx * dt;
+        active.y += active.vy * dt;
+        const a = Math.max(0, active.life) * intensity;
+        const trail = 90;
+        const g = ctx.createLinearGradient(
+          active.x,
+          active.y,
+          active.x - (active.vx / 640) * trail,
+          active.y - (active.vy / 640) * trail,
+        );
+        g.addColorStop(0, `rgba(230, 240, 255, ${0.9 * a})`);
+        g.addColorStop(1, "transparent");
+        ctx.strokeStyle = g;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(active.x, active.y);
+        ctx.lineTo(active.x - (active.vx / 640) * trail, active.y - (active.vy / 640) * trail);
+        ctx.stroke();
+        if (active.life <= 0 || active.x > w + trail) active = null;
+      }
+    },
+  };
+};
+
+/* ----------------------------------------------------------------- snow -- */
+
+export const snow: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let flakes: { x: number; y: number; r: number; sp: number; sw: number; ph: number }[] = [];
+
+  return {
+    resize(w, h) {
+      const n = Math.round(w / 7);
+      flakes = Array.from({ length: n }, () => ({
+        x: rng() * w,
+        y: rng() * h,
+        r: 0.8 + rng() * 2.1,
+        sp: 18 + rng() * 42,
+        sw: 8 + rng() * 22,
+        ph: rng() * TAU,
+      }));
+    },
+    draw(ctx, s) {
+      const { w, h, t, dt, env, intensity, depth, px } = s;
+      if (flakes.length === 0) this.resize?.(w, h);
+      const fall = Math.min(1.5, 0.5 + env.weather.precipitation * 0.5);
+      const count = Math.min(flakes.length, Math.round(flakes.length * intensity * fall * env.quality));
+      ctx.fillStyle = "#e8eef8";
+      for (let i = 0; i < count; i++) {
+        const f = flakes[i];
+        f.y += f.sp * dt * (0.5 + depth * 0.8);
+        const x = f.x + Math.sin(f.ph + t * 0.7) * f.sw + px * 10 * depth;
+        if (f.y > h + 4) {
+          f.y = -4;
+          f.x = rng() * w;
+        }
+        ctx.globalAlpha = 0.25 + f.r * 0.16;
+        ctx.beginPath();
+        ctx.arc(x, f.y, f.r, 0, TAU);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    },
+  };
+};
+
+/* ----------------------------------------------------------- dust motes -- */
+
+export const dust: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let motes: { x: number; y: number; r: number; vx: number; vy: number; ph: number }[] = [];
+
+  return {
+    resize(w, h) {
+      const n = Math.round(w / 26);
+      motes = Array.from({ length: n }, () => ({
+        x: rng() * w,
+        y: rng() * h,
+        r: 0.5 + rng() * 1.3,
+        vx: (rng() - 0.5) * 6,
+        vy: -2 - rng() * 5,
+        ph: rng() * TAU,
+      }));
+    },
+    draw(ctx, s) {
+      const { w, h, t, dt, intensity, env, px, py } = s;
+      if (motes.length === 0) this.resize?.(w, h);
+      const count = Math.round(motes.length * intensity * env.quality);
+      ctx.fillStyle = "#e9e2cf";
+      for (let i = 0; i < count; i++) {
+        const m = motes[i];
+        m.x += m.vx * dt;
+        m.y += m.vy * dt;
+        if (m.y < -4 || m.x < -4 || m.x > w + 4) {
+          m.x = rng() * w;
+          m.y = h + 4;
+        }
+        const a = 0.05 + 0.09 * Math.abs(Math.sin(m.ph + t * 0.5));
+        ctx.globalAlpha = a;
+        ctx.beginPath();
+        ctx.arc(m.x + px * 14, m.y + py * 10, m.r, 0, TAU);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    },
+  };
+};
+
+/* ------------------------------------------------------------- caustics -- */
+
+export const caustics: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  const phases = Array.from({ length: 4 }, () => rng() * TAU);
+
+  return {
+    draw(ctx, s) {
+      const { w, h, t, intensity, env } = s;
+      ctx.globalCompositeOperation = "screen";
+      // slow god-rays from above
+      for (let i = 0; i < 3; i++) {
+        const cx = w * (0.2 + i * 0.3) + Math.sin(t * 0.05 + phases[i]) * w * 0.06;
+        const grad = ctx.createLinearGradient(cx, 0, cx + w * 0.12, h);
+        grad.addColorStop(0, `rgba(110, 200, 180, ${0.05 * intensity})`);
+        grad.addColorStop(1, "transparent");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(cx - w * 0.02, 0);
+        ctx.lineTo(cx + w * 0.1, 0);
+        ctx.lineTo(cx + w * 0.28, h);
+        ctx.lineTo(cx - w * 0.2, h);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // rippling light bands
+      const bands = env.quality > 0.7 ? 3 : 2;
+      for (let b = 0; b < bands; b++) {
+        ctx.beginPath();
+        const y0 = h * (0.25 + b * 0.25);
+        for (let x = 0; x <= w; x += 16) {
+          const y =
+            y0 +
+            Math.sin(x * 0.012 + t * (0.5 + b * 0.2) + phases[b]) * 14 +
+            Math.sin(x * 0.03 - t * 0.3) * 8;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = `rgba(120, 210, 190, ${0.05 * intensity})`;
+        ctx.lineWidth = 22 - b * 5;
+        ctx.stroke();
+      }
+      ctx.globalCompositeOperation = "source-over";
+    },
+  };
+};
+
+/* ---------------------------------------------------- city lights ------- */
+
+interface Building {
+  x: number;
+  w: number;
+  h: number;
+  row: number;
+  windows: { x: number; y: number; on: number; warm: boolean }[];
+}
+
+export const cityLights: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let buildings: Building[] = [];
+  let cars: { x: number; v: number; red: boolean; y: number }[] = [];
+
+  return {
+    resize(w, h) {
+      buildings = [];
+      for (let row = 0; row < 2; row++) {
+        let x = -20;
+        while (x < w + 20) {
+          const bw = 34 + rng() * 90;
+          const bh = h * (row === 0 ? 0.1 + rng() * 0.16 : 0.06 + rng() * 0.1);
+          const b: Building = { x, w: bw, h: bh, row, windows: [] };
+          const cols = Math.floor(bw / 11);
+          const rows = Math.floor(bh / 13);
+          for (let cx = 0; cx < cols; cx++) {
+            for (let cy = 0; cy < rows; cy++) {
+              if (rng() < 0.32) {
+                b.windows.push({
+                  x: 4 + cx * 11,
+                  y: 6 + cy * 13,
+                  on: rng(),
+                  warm: rng() < 0.72,
+                });
+              }
+            }
+          }
+          buildings.push(b);
+          x += bw + 2 + rng() * 10;
+        }
+      }
+      cars = Array.from({ length: 14 }, () => ({
+        x: rng() * w,
+        v: (20 + rng() * 40) * (rng() < 0.5 ? 1 : -1),
+        red: rng() < 0.5,
+        y: rng(),
+      }));
+    },
+    draw(ctx, s) {
+      const { w, h, t, dt, env, intensity, px, depth } = s;
+      if (buildings.length === 0) this.resize?.(w, h);
+      const horizon = h * 0.82;
+      const dim = 1 - env.weather.cloudCover * 0.25;
+
+      // ground plane: keep the street darker than the sky
+      const ground = ctx.createLinearGradient(0, horizon, 0, h);
+      ground.addColorStop(0, "rgba(5, 7, 12, 0.55)");
+      ground.addColorStop(1, "rgba(3, 4, 8, 0.92)");
+      ctx.fillStyle = ground;
+      ctx.fillRect(0, horizon, w, h - horizon);
+
+      // skyline glow
+      const glow = ctx.createRadialGradient(w * 0.5, horizon, 0, w * 0.5, horizon, w * 0.6);
+      glow.addColorStop(0, `rgba(212, 160, 90, ${0.05 * intensity})`);
+      glow.addColorStop(1, "transparent");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, w, h);
+
+      for (const b of buildings) {
+        const par = px * (b.row === 0 ? 4 : 9) * depth;
+        const baseY = horizon - b.h + (b.row === 1 ? 6 : 0);
+        ctx.fillStyle = b.row === 0 ? "rgba(6, 9, 16, 0.9)" : "rgba(9, 13, 22, 0.95)";
+        ctx.fillRect(b.x + par, baseY, b.w, b.h + 40);
+        for (const win of b.windows) {
+          const flicker = win.on > 0.94 ? 0.5 + 0.5 * Math.sin(t * 6 + win.x) : 1;
+          ctx.globalAlpha = 0.4 * intensity * dim * flicker * (b.row === 1 ? 1 : 0.65);
+          ctx.fillStyle = win.warm ? "#d9a05b" : "#9db4d6";
+          ctx.fillRect(b.x + par + win.x, baseY + win.y, 3.4, 4.6);
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // distant blurred traffic along the horizon
+      if (!env.still) {
+        for (const c of cars) {
+          c.x += c.v * dt;
+          if (c.x < -20) c.x = w + 20;
+          if (c.x > w + 20) c.x = -20;
+        }
+      }
+      ctx.save();
+      ctx.filter = "blur(2px)";
+      for (const c of cars) {
+        ctx.globalAlpha = 0.5 * intensity;
+        ctx.fillStyle = c.red ? "#b8453a" : "#e0c48f";
+        ctx.beginPath();
+        ctx.arc(c.x, horizon + 4 + c.y * 5, 1.6, 0, TAU);
+        ctx.fill();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+
+      // wet street reflections when raining
+      if (env.weather.kind === "rain" || env.weather.kind === "drizzle" || env.weather.isStorm) {
+        const rg = ctx.createLinearGradient(0, horizon, 0, h);
+        rg.addColorStop(0, `rgba(217, 160, 91, ${0.07 * intensity})`);
+        rg.addColorStop(1, "transparent");
+        ctx.fillStyle = rg;
+        ctx.fillRect(0, horizon, w, h - horizon);
+      }
+    },
+  };
+};
+
+/* ------------------------------------------------------------ neon signs -- */
+
+const NEON_COLORS = ["#c85a50", "#5f9ea8", "#c9a35a", "#7d8ec4", "#b3736f"];
+
+export const neonSigns: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let signs: { x: number; y: number; w: number; h: number; c: string; fl: number }[] = [];
+
+  return {
+    resize(w, h) {
+      signs = Array.from({ length: Math.round(w / 130) }, () => ({
+        x: rng() * w,
+        y: h * (0.3 + rng() * 0.35),
+        w: 8 + rng() * 14,
+        h: 40 + rng() * 90,
+        c: NEON_COLORS[Math.floor(rng() * NEON_COLORS.length)],
+        fl: rng(),
+      }));
+    },
+    draw(ctx, s) {
+      const { w, h, t, intensity, px } = s;
+      if (signs.length === 0) this.resize?.(w, h);
+      for (const sign of signs) {
+        const flicker =
+          sign.fl > 0.8 ? 0.55 + 0.45 * Math.abs(Math.sin(t * 9 + sign.x)) : 1;
+        const x = sign.x + px * 8;
+        ctx.globalAlpha = 0.5 * intensity * flicker;
+        ctx.fillStyle = sign.c;
+        ctx.fillRect(x, sign.y, sign.w, sign.h);
+        // halo
+        const g = ctx.createRadialGradient(
+          x + sign.w / 2, sign.y + sign.h / 2, 0,
+          x + sign.w / 2, sign.y + sign.h / 2, sign.h,
+        );
+        g.addColorStop(0, sign.c);
+        g.addColorStop(1, "transparent");
+        ctx.globalAlpha = 0.08 * intensity * flicker;
+        ctx.fillStyle = g;
+        ctx.fillRect(x - sign.h, sign.y - sign.h / 2, sign.h * 2 + sign.w, sign.h * 2);
+        // wet reflection smear
+        const ry = h * 0.86;
+        const rg = ctx.createLinearGradient(0, ry, 0, ry + sign.h * 0.8);
+        rg.addColorStop(0, sign.c);
+        rg.addColorStop(1, "transparent");
+        ctx.globalAlpha = 0.1 * intensity * flicker;
+        ctx.fillStyle = rg;
+        ctx.fillRect(x - 2, ry, sign.w + 4, sign.h * 0.8);
+      }
+      ctx.globalAlpha = 1;
+    },
+  };
+};
+
+/* ---------------------------------------------------------------- embers -- */
+
+export const embers: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let sparks: { x: number; y: number; vy: number; life: number; max: number }[] = [];
+
+  return {
+    resize(w, h) {
+      sparks = Array.from({ length: 12 }, () => ({
+        x: 0, y: h + 10, vy: 0, life: 0, max: 1,
+      }));
+    },
+    draw(ctx, s) {
+      const { w, h, t, dt, intensity, env } = s;
+      // candle glow anchored low-left, breathing slowly
+      const breathe = 0.9 + 0.1 * Math.sin(t * 0.9) + 0.03 * Math.sin(t * 7.3);
+      const gx = w * 0.12;
+      const gy = h * 0.88;
+      const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, h * 0.45 * breathe);
+      g.addColorStop(0, `rgba(226, 168, 92, ${0.16 * intensity})`);
+      g.addColorStop(0.5, `rgba(190, 120, 60, ${0.06 * intensity})`);
+      g.addColorStop(1, "transparent");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      if (env.still) return;
+      if (sparks.length === 0) this.resize?.(w, h);
+      const rate = intensity * env.quality;
+      for (const sp of sparks) {
+        sp.life -= dt;
+        if (sp.life <= 0 && rng() < 0.01 * rate * 60 * dt) {
+          sp.x = gx + (rng() - 0.5) * 30;
+          sp.y = gy;
+          sp.vy = -(14 + rng() * 26);
+          sp.max = 2 + rng() * 3;
+          sp.life = sp.max;
+        }
+        if (sp.life > 0) {
+          sp.y += sp.vy * dt;
+          sp.x += Math.sin(t * 3 + sp.y * 0.06) * 0.3;
+          const a = (sp.life / sp.max) * 0.5 * intensity;
+          ctx.globalAlpha = a;
+          ctx.fillStyle = "#e8b072";
+          ctx.beginPath();
+          ctx.arc(sp.x, sp.y, 1.1, 0, TAU);
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+    },
+  };
+};
+
+/* ---------------------------------------------------------------- clouds -- */
+
+export const clouds: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let puffs: { x: number; y: number; rx: number; ry: number; v: number; a: number }[] = [];
+
+  return {
+    resize(w, h) {
+      puffs = Array.from({ length: 7 }, () => ({
+        x: rng() * w,
+        y: h * (0.05 + rng() * 0.3),
+        rx: w * (0.18 + rng() * 0.2),
+        ry: 24 + rng() * 44,
+        v: 2.5 + rng() * 5,
+        a: 0.4 + rng() * 0.6,
+      }));
+    },
+    draw(ctx, s) {
+      const { w, h, dt, env, intensity } = s;
+      if (puffs.length === 0) this.resize?.(w, h);
+      const cover = Math.max(0.15, env.weather.cloudCover);
+      for (const p of puffs) {
+        if (!env.still) p.x += p.v * dt;
+        if (p.x - p.rx > w) p.x = -p.rx;
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.rx);
+        g.addColorStop(0, `rgba(150, 165, 195, ${0.07 * intensity * cover * p.a})`);
+        g.addColorStop(1, "transparent");
+        ctx.fillStyle = g;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.scale(1, p.ry / p.rx);
+        ctx.translate(-p.x, -p.y);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.rx, 0, TAU);
+        ctx.fill();
+        ctx.restore();
+      }
+    },
+  };
+};
+
+/* -------------------------------------------------------------- branches -- */
+
+export const branches: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  const arms = Array.from({ length: 5 }, (_, i) => ({
+    side: i % 2,
+    y: 0.1 + rng() * 0.5,
+    len: 0.22 + rng() * 0.2,
+    droop: 30 + rng() * 60,
+    ph: rng() * TAU,
+    segs: 3 + Math.floor(rng() * 3),
+  }));
+
+  return {
+    draw(ctx, s) {
+      const { w, h, t, intensity, px } = s;
+      ctx.strokeStyle = "rgba(8, 14, 10, 0.85)";
+      ctx.lineCap = "round";
+      for (const a of arms) {
+        const sway = Math.sin(t * 0.4 + a.ph) * 3 + px * 5;
+        const x0 = a.side === 0 ? -10 : w + 10;
+        const dir = a.side === 0 ? 1 : -1;
+        const y0 = h * a.y;
+        ctx.globalAlpha = intensity;
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        let x = x0;
+        let y = y0;
+        for (let seg = 0; seg < a.segs; seg++) {
+          const nx = x + dir * w * (a.len / a.segs);
+          const ny = y + a.droop / a.segs + Math.sin(t * 0.4 + a.ph + seg) * 2;
+          ctx.quadraticCurveTo(x + dir * 30, y + 10 + sway * 0.4, nx, ny + sway);
+          x = nx;
+          y = ny;
+          ctx.lineWidth = Math.max(1.5, 7 - seg * 2);
+        }
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    },
+  };
+};
+
+/* ----------------------------------------------------------------- moon -- */
+
+export const moon: EffectFactory = () => ({
+  draw(ctx, s) {
+    const { w, h, env, intensity, px, py } = s;
+    const x = w * 0.76 + px * 3;
+    const y = h * 0.16 + py * 2;
+    const r = Math.min(w, h) * 0.035;
+    const bright = intensity * (1 - env.weather.cloudCover * 0.7);
+    if (bright <= 0.02) return;
+
+    // halo
+    const halo = ctx.createRadialGradient(x, y, r * 0.4, x, y, r * 6);
+    halo.addColorStop(0, `rgba(220, 230, 245, ${0.13 * bright})`);
+    halo.addColorStop(1, "transparent");
+    ctx.fillStyle = halo;
+    ctx.fillRect(x - r * 6, y - r * 6, r * 12, r * 12);
+
+    // disc with phase shadow
+    ctx.globalAlpha = 0.9 * bright;
+    ctx.fillStyle = "#e6ecf6";
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, TAU);
+    ctx.fill();
+    const ph = env.moonPhase; // 0 new .. 1 full
+    if (ph < 0.97) {
+      ctx.fillStyle = "rgba(8, 12, 22, 0.92)";
+      ctx.beginPath();
+      const off = (1 - ph) * r * 2.1;
+      ctx.arc(x - off * 0.6, y - off * 0.15, r * 1.02, 0, TAU);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  },
+});
+
+/* ------------------------------------------------------------- lamp glow -- */
+
+export const lampGlow: EffectFactory = () => ({
+  draw(ctx, s) {
+    const { w, h, t, intensity } = s;
+    // desk lamp pool, bottom right; breathing very slowly
+    const breathe = 0.96 + 0.04 * Math.sin(t * 0.5);
+    const x = w * 0.85;
+    const y = h * 0.9;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, h * 0.7 * breathe);
+    g.addColorStop(0, `rgba(227, 181, 119, ${0.2 * intensity})`);
+    g.addColorStop(0.4, `rgba(200, 140, 80, ${0.08 * intensity})`);
+    g.addColorStop(1, "transparent");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+
+    // desk and shelf silhouettes along the bottom
+    ctx.fillStyle = "rgba(10, 7, 5, 0.55)";
+    ctx.fillRect(0, h * 0.965, w, h * 0.035);
+    ctx.fillRect(w * 0.04, h * 0.965 - 36, 3, 36); // plant stem hint
+    // plant leaves: three soft arcs
+    ctx.strokeStyle = "rgba(12, 16, 10, 0.6)";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    for (let i = 0; i < 3; i++) {
+      const sway = Math.sin(t * 0.4 + i) * 1.6;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.04 + 1, h * 0.965 - 30);
+      ctx.quadraticCurveTo(
+        w * 0.04 + (i - 1) * 26 + sway,
+        h * 0.965 - 62,
+        w * 0.04 + (i - 1) * 40 + sway,
+        h * 0.965 - 78 + i * 6,
+      );
+      ctx.stroke();
+    }
+  },
+});
+
+/* ---------------------------------------------------------------- export -- */
+
+export const EFFECTS: Record<string, EffectFactory> = {
+  "sky-gradient": skyGradient,
+  rain,
+  droplets,
+  fog,
+  stars,
+  "shooting-stars": shootingStars,
+  snow,
+  dust,
+  caustics,
+  "city-lights": cityLights,
+  "neon-signs": neonSigns,
+  embers,
+  clouds,
+  branches,
+  moon,
+  "lamp-glow": lampGlow,
+};

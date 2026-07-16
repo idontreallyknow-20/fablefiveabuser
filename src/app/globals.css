@@ -1,0 +1,404 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Orbit design tokens. See docs/DESIGN.md.
+   Semantic variables are set per theme on [data-theme]; Tailwind utilities
+   map onto them through @theme inline.
+--------------------------------------------------------------------------- */
+
+@theme inline {
+  --color-bg0: var(--bg0);
+  --color-bg1: var(--bg1);
+  --color-bg2: var(--bg2);
+  --color-bg3: var(--bg3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-dim: var(--ink-dim);
+  --color-ink-faint: var(--ink-faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-ok: var(--ok);
+
+  --font-display: var(--font-fraunces);
+  --font-body: var(--font-hanken);
+  --font-mono: var(--font-jetbrains);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+:root {
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 320ms;
+  --dur-scene: 1200ms;
+
+  /* interface scaling controls (Space -> Appearance) */
+  --ui-opacity: 1;
+  --ui-blur: 0px;
+  --ui-brightness: 1;
+  --text-scale: 1;
+  --space-unit: 8px;
+}
+
+/* ---------------------------------------------------------------------------
+   Themes. Each theme is a hue-biased off-black world with one rationed
+   accent. Scene colors live in src/lib/themes/registry.ts.
+--------------------------------------------------------------------------- */
+
+:root,
+[data-theme="rainy-city"] {
+  --bg0: #070b13;
+  --bg1: #0b101a;
+  --bg2: #101623;
+  --bg3: #151c2c;
+  --line: rgba(168, 194, 234, 0.1);
+  --line-strong: rgba(168, 194, 234, 0.2);
+  --ink: #e9edf5;
+  --ink-dim: rgba(233, 237, 245, 0.68);
+  --ink-faint: rgba(233, 237, 245, 0.44);
+  --accent: #d9a05b;
+  --accent-ink: #16110a;
+  --accent-soft: rgba(217, 160, 91, 0.13);
+  --danger: #c4574e;
+  --danger-soft: rgba(196, 87, 78, 0.14);
+  --ok: #8fb98a;
+}
+
+[data-theme="bedroom"] {
+  --bg0: #14100c;
+  --bg1: #191410;
+  --bg2: #1f1914;
+  --bg3: #262019;
+  --line: rgba(233, 205, 170, 0.1);
+  --line-strong: rgba(233, 205, 170, 0.2);
+  --ink: #f0e9e0;
+  --ink-dim: rgba(240, 233, 224, 0.68);
+  --ink-faint: rgba(240, 233, 224, 0.44);
+  --accent: #e3b577;
+  --accent-ink: #1a130a;
+  --accent-soft: rgba(227, 181, 119, 0.13);
+  --danger: #c05f52;
+  --danger-soft: rgba(192, 95, 82, 0.14);
+  --ok: #a3b183;
+}
+
+[data-theme="library"] {
+  --bg0: #0f0e11;
+  --bg1: #141317;
+  --bg2: #1a181d;
+  --bg3: #201e24;
+  --line: rgba(216, 204, 176, 0.11);
+  --line-strong: rgba(216, 204, 176, 0.22);
+  --ink: #ece6d8;
+  --ink-dim: rgba(236, 230, 216, 0.68);
+  --ink-faint: rgba(236, 230, 216, 0.44);
+  --accent: #cda35f;
+  --accent-ink: #171106;
+  --accent-soft: rgba(205, 163, 95, 0.12);
+  --danger: #b85c50;
+  --danger-soft: rgba(184, 92, 80, 0.14);
+  --ok: #9cae86;
+}
+
+[data-theme="tokyo"] {
+  --bg0: #0a0c12;
+  --bg1: #0e1119;
+  --bg2: #131720;
+  --bg3: #191d29;
+  --line: rgba(180, 198, 235, 0.1);
+  --line-strong: rgba(180, 198, 235, 0.2);
+  --ink: #eaedf2;
+  --ink-dim: rgba(234, 237, 242, 0.68);
+  --ink-faint: rgba(234, 237, 242, 0.44);
+  --accent: #cf5b50;
+  --accent-ink: #1a0c0a;
+  --accent-soft: rgba(207, 91, 80, 0.13);
+  --danger: #cf5b50;
+  --danger-soft: rgba(207, 91, 80, 0.16);
+  --ok: #8ab393;
+}
+
+[data-theme="observatory"] {
+  --bg0: #05070e;
+  --bg1: #080b14;
+  --bg2: #0c101c;
+  --bg3: #111626;
+  --line: rgba(150, 180, 230, 0.1);
+  --line-strong: rgba(150, 180, 230, 0.2);
+  --ink: #e6ecf6;
+  --ink-dim: rgba(230, 236, 246, 0.68);
+  --ink-faint: rgba(230, 236, 246, 0.44);
+  --accent: #8fb6e8;
+  --accent-ink: #0a1120;
+  --accent-soft: rgba(143, 182, 232, 0.12);
+  --danger: #bd5f57;
+  --danger-soft: rgba(189, 95, 87, 0.14);
+  --ok: #8fb98a;
+}
+
+[data-theme="forest"] {
+  --bg0: #090e0b;
+  --bg1: #0d1310;
+  --bg2: #121915;
+  --bg3: #17201b;
+  --line: rgba(190, 214, 188, 0.1);
+  --line-strong: rgba(190, 214, 188, 0.2);
+  --ink: #e7ede4;
+  --ink-dim: rgba(231, 237, 228, 0.68);
+  --ink-faint: rgba(231, 237, 228, 0.44);
+  --accent: #a9be97;
+  --accent-ink: #10160a;
+  --accent-soft: rgba(169, 190, 151, 0.12);
+  --danger: #b85c50;
+  --danger-soft: rgba(184, 92, 80, 0.14);
+  --ok: #a9be97;
+}
+
+[data-theme="snow"] {
+  --bg0: #0b0e15;
+  --bg1: #0f131c;
+  --bg2: #141924;
+  --bg3: #1a202d;
+  --line: rgba(190, 210, 240, 0.12);
+  --line-strong: rgba(190, 210, 240, 0.24);
+  --ink: #ecf1f7;
+  --ink-dim: rgba(236, 241, 247, 0.7);
+  --ink-faint: rgba(236, 241, 247, 0.46);
+  --accent: #a8c7e0;
+  --accent-ink: #0d1522;
+  --accent-soft: rgba(168, 199, 224, 0.12);
+  --danger: #bd5f57;
+  --danger-soft: rgba(189, 95, 87, 0.14);
+  --ok: #93b3a0;
+}
+
+[data-theme="academia"] {
+  --bg0: #12100d;
+  --bg1: #171411;
+  --bg2: #1d1915;
+  --bg3: #241f1a;
+  --line: rgba(222, 200, 165, 0.11);
+  --line-strong: rgba(222, 200, 165, 0.22);
+  --ink: #efe8dc;
+  --ink-dim: rgba(239, 232, 220, 0.68);
+  --ink-faint: rgba(239, 232, 220, 0.44);
+  --accent: #b9915c;
+  --accent-ink: #171006;
+  --accent-soft: rgba(185, 145, 92, 0.12);
+  --danger: #a8564b;
+  --danger-soft: rgba(168, 86, 75, 0.15);
+  --ok: #99a97f;
+}
+
+[data-theme="ocean"] {
+  --bg0: #04100f;
+  --bg1: #071514;
+  --bg2: #0b1b1a;
+  --bg3: #102221;
+  --line: rgba(150, 216, 200, 0.1);
+  --line-strong: rgba(150, 216, 200, 0.2);
+  --ink: #e2eeec;
+  --ink-dim: rgba(226, 238, 236, 0.68);
+  --ink-faint: rgba(226, 238, 236, 0.44);
+  --accent: #5fb3a1;
+  --accent-ink: #06211c;
+  --accent-soft: rgba(95, 179, 161, 0.12);
+  --danger: #bd5f57;
+  --danger-soft: rgba(189, 95, 87, 0.14);
+  --ok: #5fb3a1;
+}
+
+[data-theme="luxe"] {
+  --bg0: #0a0a0b;
+  --bg1: #0e0e10;
+  --bg2: #131315;
+  --bg3: #19191c;
+  --line: rgba(220, 210, 190, 0.09);
+  --line-strong: rgba(220, 210, 190, 0.2);
+  --ink: #ece9e3;
+  --ink-dim: rgba(236, 233, 227, 0.66);
+  --ink-faint: rgba(236, 233, 227, 0.42);
+  --accent: #c8b08a;
+  --accent-ink: #14100a;
+  --accent-soft: rgba(200, 176, 138, 0.1);
+  --danger: #b05a51;
+  --danger-soft: rgba(176, 90, 81, 0.14);
+  --ok: #9aa98c;
+}
+
+[data-theme="living-sky"] {
+  /* the sky engine retunes these at runtime through --sky-* variables */
+  --bg0: var(--sky-bg0, #0c1018);
+  --bg1: var(--sky-bg1, #101520);
+  --bg2: var(--sky-bg2, #151b28);
+  --bg3: var(--sky-bg3, #1b2231);
+  --line: rgba(190, 205, 235, 0.1);
+  --line-strong: rgba(190, 205, 235, 0.2);
+  --ink: #ebeef4;
+  --ink-dim: rgba(235, 238, 244, 0.68);
+  --ink-faint: rgba(235, 238, 244, 0.44);
+  --accent: var(--sky-accent, #c99a6b);
+  --accent-ink: #171008;
+  --accent-soft: var(--sky-accent-soft, rgba(201, 154, 107, 0.13));
+  --danger: #bd5f57;
+  --danger-soft: rgba(189, 95, 87, 0.14);
+  --ok: #93ae8c;
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+--------------------------------------------------------------------------- */
+
+html {
+  font-size: calc(16px * var(--text-scale));
+}
+
+body {
+  background: var(--bg0);
+  color: var(--ink);
+  font-family: var(--font-hanken), system-ui, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   Recurring compositions
+--------------------------------------------------------------------------- */
+
+.eyebrow {
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.display {
+  font-family: var(--font-fraunces), serif;
+  font-variation-settings: "opsz" 144;
+  letter-spacing: -0.01em;
+}
+
+.surface {
+  background: color-mix(in srgb, var(--bg1) calc(var(--ui-opacity) * 100%), transparent);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.surface-raised {
+  background: color-mix(in srgb, var(--bg2) calc(var(--ui-opacity) * 100%), transparent);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.surface-overlay {
+  background: var(--bg3);
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+
+/* the two allowed translucent layers */
+.floating {
+  background: color-mix(in srgb, var(--bg1) 78%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+}
+
+/* procedural grain: unifies gradients, kills banding. zero network cost. */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* entry motion: 12px rise + fade, staggered by --stagger-i */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise {
+  animation: rise-in var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--stagger-i, 0) * 50ms);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade {
+  animation: fade-in var(--dur-slow) var(--ease-out) both;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .fade {
+    animation-duration: 1ms;
+    animation-delay: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}
+
+/* reduced motion via app setting mirrors the media query */
+[data-motion="off"] .rise,
+[data-motion="off"] .fade {
+  animation-duration: 1ms;
+  animation-delay: 0ms;
+}
