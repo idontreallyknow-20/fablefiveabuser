@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -79,6 +80,12 @@ function LoginInner() {
         <div className="mb-8 text-center">
           <h1 className="display text-4xl font-light tracking-tight text-ink">Orbit</h1>
           <p className="mt-2 text-sm text-ink-faint">A quiet place for the day</p>
+          <Link
+            href="/preview"
+            className="mt-3 inline-block rounded-xl border border-line bg-bg1/60 px-3.5 py-1.5 text-[13px] text-ink-dim transition-colors duration-[var(--dur-base)] hover:border-line-strong hover:text-ink"
+          >
+            Look around first
+          </Link>
         </div>
 
         <form onSubmit={submit} className="surface flex flex-col gap-4 p-6">
