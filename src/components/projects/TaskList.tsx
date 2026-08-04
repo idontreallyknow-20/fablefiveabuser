@@ -11,7 +11,6 @@ import { projectStatuses, type Project } from "@/lib/data/projects";
 import { Button } from "@/components/ui/Button";
 import { Confirm } from "@/components/ui/Modal";
 import { Segmented } from "@/components/ui/Segmented";
-import { useToast } from "@/components/ui/Toast";
 import { IconCheck, IconChevronDown, IconPlus, IconTrash } from "@/components/ui/Icons";
 import { LinkChips, selectCls } from "@/components/projects/TaskEditModal";
 import { isDoneStatus, statusPatch, taskLinks } from "@/components/projects/task-utils";
@@ -19,7 +18,6 @@ import { isDoneStatus, statusPatch, taskLinks } from "@/components/projects/task
 function TaskRow({ task, statuses }: { task: Task; statuses: string[] }) {
   const update = useUpdateTask();
   const del = useDeleteTask();
-  const { toast } = useToast();
 
   const [expanded, setExpanded] = useState(false);
   const [note, setNote] = useState(task.note);
@@ -220,8 +218,7 @@ function TaskRow({ task, statuses }: { task: Task; statuses: string[] }) {
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         onConfirm={async () => {
-          await del.mutateAsync(task.id);
-          toast("Task deleted");
+          await del.mutateAsync(task);
         }}
         title="Delete task"
         body={`"${task.title}" will be removed for good.`}

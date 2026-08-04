@@ -6,7 +6,6 @@ import { Modal, Confirm } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Field, TextArea } from "@/components/ui/Field";
 import { Segmented } from "@/components/ui/Segmented";
-import { useToast } from "@/components/ui/Toast";
 import { IconPlus } from "@/components/ui/Icons";
 import {
   TASK_CATEGORIES,
@@ -122,7 +121,6 @@ function TaskEditForm({
 }) {
   const update = useUpdateTask();
   const del = useDeleteTask();
-  const { toast } = useToast();
 
   const [title, setTitle] = useState(task.title);
   const [status, setStatus] = useState(task.status);
@@ -537,8 +535,7 @@ function TaskEditForm({
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         onConfirm={async () => {
-          await del.mutateAsync(task.id);
-          toast("Task deleted");
+          await del.mutateAsync(task);
           onClose();
         }}
         title="Delete task"

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Tables, TablesInsert, TablesUpdate } from "@/lib/db/types";
 import { runOrQueue } from "@/lib/offline/outbox";
+import { useToast } from "@/components/ui/Toast";
 
 export type Task = Tables<"tasks">;
 
@@ -151,12 +152,22 @@ export function useUpdateTask() {
 
 export function useDeleteTask() {
   const qc = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (task: Task) => {
       const supabase = supabaseBrowser();
-      await runOrQueue({ table: "tasks", op: "delete", rowId: id }, async () => {
-        const { error } = await supabase.from("tasks").delete().eq("id", id);
+      await runOrQueue({ table: "tasks", op: "delete", rowId: task.id }, async () => {
+        const { error } = await supabase.from("tasks").delete().eq("id", task.id);
         if (error) throw error;
+      });
+      toast(task.title, "info", {
+        label: "Undo",
+        onClick: () => {
+          void runOrQueue({ table: "tasks", op: "insert", payload: task }, async () => {
+            const { error } = await supabase.from("tasks").insert(task);
+            if (error) throw error;
+          }).then(() => invalidate(qc));
+        },
       });
     },
     onSettled: () => invalidate(qc),
@@ -166,13 +177,24 @@ export function useDeleteTask() {
 /** task actions used across Today and Focus */
 export function useTaskActions() {
   const update = useUpdateTask();
+  const { toast } = useToast();
 
   return {
-    complete: (task: Task) =>
-      update.mutateAsync({
+    complete: (task: Task) => {
+      const p = update.mutateAsync({
         id: task.id,
         patch: { completed_at: new Date().toISOString(), status: "done" },
-      }),
+      });
+      toast(task.title, "success", {
+        label: "Undo",
+        onClick: () =>
+          void update.mutateAsync({
+            id: task.id,
+            patch: { completed_at: null, status: task.status === "done" ? "todo" : task.status },
+          }),
+      });
+      return p;
+    },
     uncomplete: (task: Task) =>
       update.mutateAsync({
         id: task.id,
