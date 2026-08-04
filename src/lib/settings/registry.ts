@@ -81,20 +81,52 @@ export const SETTINGS_REGISTRY: SettingDef[] = [
   { id: "brightness", label: "Brightness", section: "Interface", path: "brightness", control: { kind: "slider", min: 0.6, max: 1, step: 0.05, format: pct } },
   { id: "ui-blur", label: "Panel blur", section: "Interface", path: "uiBlur", control: { kind: "slider", min: 0, max: 16, step: 1, format: (v) => `${v}px` } },
   { id: "ui-opacity", label: "Panel opacity", section: "Interface", path: "uiOpacity", control: { kind: "slider", min: 0.7, max: 1, step: 0.05, format: pct } },
-  { id: "text-scale", label: "Text size", section: "Interface", path: "textScale", control: { kind: "slider", min: 0.9, max: 1.2, step: 0.05, format: pct } },
+  { id: "type-scale", label: "Type scale", section: "Interface", path: "ui.fontScale", control: { kind: "slider", min: 0.9, max: 1.1, step: 0.1, format: pct }, keywords: "text size font" },
+  {
+    id: "corners",
+    label: "Corners",
+    section: "Interface",
+    path: "ui.radius",
+    control: {
+      kind: "segmented",
+      options: [
+        { value: "sharp", label: "Sharp" },
+        { value: "soft", label: "Soft" },
+        { value: "round", label: "Round" },
+      ],
+    },
+    keywords: "radius rounded shape",
+  },
   {
     id: "density",
     label: "Density",
     section: "Interface",
-    path: "density",
+    path: "ui.density",
     control: {
       kind: "segmented",
       options: [
-        { value: "comfortable", label: "Comfortable" },
         { value: "compact", label: "Compact" },
+        { value: "cozy", label: "Cozy" },
+        { value: "airy", label: "Airy" },
       ],
     },
+    keywords: "spacing comfortable",
   },
+  {
+    id: "contrast",
+    label: "Contrast",
+    section: "Interface",
+    path: "ui.contrast",
+    control: {
+      kind: "segmented",
+      options: [
+        { value: "normal", label: "Normal" },
+        { value: "high", label: "High" },
+      ],
+    },
+    keywords: "legibility readability accessibility",
+  },
+  { id: "clock-seconds", label: "Seconds", section: "Interface", path: "ui.clockSeconds", control: { kind: "toggle" }, keywords: "clock time" },
 
   // modules
   { id: "module-train", label: "Train", section: "Modules", path: "modules.train", control: { kind: "toggle" }, keywords: "workout gym fitness" },

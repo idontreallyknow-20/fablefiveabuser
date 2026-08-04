@@ -20,16 +20,17 @@ export interface LayoutPresetDef {
 
 export const LAYOUT_PRESETS: LayoutPresetDef[] = [
   {
+    // default: only widgets that work with zero integrations, no holes
     id: "command",
     name: "Command Center",
     build: () => ({
       widgets: [
         w("priorities", 0, 0, 7, 5),
-        w("player", 7, 0, 5, 2),
-        w("calendar-today", 7, 2, 5, 3),
-        w("due-soon", 0, 5, 4, 3),
-        w("routines", 4, 5, 4, 3),
-        w("stats", 8, 5, 4, 3),
+        w("due-soon", 7, 0, 5, 3),
+        w("stats", 7, 3, 5, 2),
+        w("routines", 0, 5, 4, 3),
+        w("habit-heatmap", 4, 5, 4, 3),
+        w("momentum", 8, 5, 4, 3),
       ],
     }),
   },

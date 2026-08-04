@@ -158,31 +158,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Link>
       </nav>
 
-      {/* mobile tab bar */}
+      {/* mobile tab bar — icon-only so every module fits without clipping */}
       <nav
         aria-label="Primary"
-        className="floating fixed inset-x-3 bottom-3 z-40 flex items-center justify-around rounded-2xl px-1 py-1.5 md:hidden"
-        style={{ paddingBottom: "max(6px, env(safe-area-inset-bottom))" }}
+        className="floating fixed inset-x-4 bottom-3 z-40 flex items-center rounded-[22px] px-1.5 py-1 md:hidden"
+        style={{ paddingBottom: "max(4px, env(safe-area-inset-bottom))" }}
       >
         {nav
           .filter((item) => !("desktopOnly" in item && item.desktopOnly))
           .map(({ href, label, icon: Icon }) => {
-          const active = pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={[
-                "flex min-w-14 flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 transition-colors duration-[var(--dur-base)]",
-                active ? "text-accent" : "text-ink-faint",
-              ].join(" ")}
-            >
-              <Icon size={19} />
-              <span className="text-[10px] font-medium">{label}</span>
-            </Link>
-          );
-        })}
+            const active = pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-label={label}
+                aria-current={active ? "page" : undefined}
+                className={[
+                  "relative flex h-12 flex-1 flex-col items-center justify-center rounded-2xl transition-colors duration-[var(--dur-base)]",
+                  active ? "text-accent" : "text-ink-faint active:text-ink-dim",
+                ].join(" ")}
+              >
+                <Icon size={21} />
+                <span
+                  aria-hidden
+                  className={[
+                    "absolute bottom-1.5 h-1 w-1 rounded-full bg-accent transition-opacity duration-[var(--dur-base)]",
+                    active ? "opacity-100" : "opacity-0",
+                  ].join(" ")}
+                />
+              </Link>
+            );
+          })}
       </nav>
 
       <main className="relative z-10 min-h-dvh px-4 pb-28 pt-6 md:pb-10 md:pl-[104px] md:pr-8 md:pt-8">

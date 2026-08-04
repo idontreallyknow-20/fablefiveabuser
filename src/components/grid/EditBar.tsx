@@ -8,7 +8,7 @@ import { compact, type TodayLayout, type WidgetInstance } from "@/lib/widgets/ty
 import { WIDGET_LIST, WIDGETS } from "@/lib/widgets/registry";
 import { LAYOUT_PRESETS } from "@/lib/settings/layout";
 import { Button } from "@/components/ui/Button";
-import { IconPlus } from "@/components/ui/Icons";
+import { IconGrip, IconPlus } from "@/components/ui/Icons";
 
 export function EditBar({
   editing,
@@ -40,9 +40,13 @@ export function EditBar({
 
   if (!editing) {
     return (
-      <Button variant="quiet" size="sm" onClick={() => onEditing(true)}>
-        Edit layout
-      </Button>
+      <button
+        aria-label="Edit layout"
+        onClick={() => onEditing(true)}
+        className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-bg1/70 text-ink-dim transition-colors duration-[var(--dur-base)] hover:border-line-strong hover:text-ink"
+      >
+        <IconGrip size={16} />
+      </button>
     );
   }
 

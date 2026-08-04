@@ -36,10 +36,8 @@ export function DueSoon() {
       .slice(0, 6);
   }, [tasks]);
 
-  if (due.length === 0) return null;
-
   return (
-    <section aria-label="Due soon" className="surface rounded-2xl p-4">
+    <section aria-label="Due soon" className="surface h-full rounded-2xl p-4">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="eyebrow">Due soon</h2>
         <span className="flex items-center gap-2.5">
@@ -60,6 +58,7 @@ export function DueSoon() {
           </Link>
         </span>
       </div>
+      {due.length === 0 && <p className="font-mono text-[12px] text-ink-faint">—</p>}
       <ul className="flex flex-col gap-1">
         {due.map((t: Task) => {
           const overdue = t.due_date! < today;

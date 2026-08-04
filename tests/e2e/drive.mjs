@@ -66,7 +66,10 @@ try {
   // complete it
   await page.getByLabel(/Complete Ship NerfChess/).click();
   await page.waitForTimeout(600);
-  check("priority completes", await page.getByText("Done. Well placed.").isVisible().catch(() => false));
+  check(
+    "priority completes",
+    await page.getByRole("button", { name: "Undo" }).first().isVisible().catch(() => false),
+  );
   await shot("04-today-populated");
 
   // ---- projects ----

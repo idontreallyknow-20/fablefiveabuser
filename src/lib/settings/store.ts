@@ -41,6 +41,16 @@ export interface BackgroundSettings {
   particles: boolean;
 }
 
+export interface UiSettings {
+  /** hex accent override; null follows the theme accent */
+  accent: string | null;
+  radius: "sharp" | "soft" | "round";
+  density: "compact" | "cozy" | "airy";
+  fontScale: 0.9 | 1 | 1.1;
+  clockSeconds: boolean;
+  contrast: "normal" | "high";
+}
+
 export interface ModuleToggles {
   train: boolean;
   reflect: boolean;
@@ -58,6 +68,7 @@ export interface NutritionTargets {
 export interface OrbitSettings {
   theme: ThemeId;
   background: BackgroundSettings;
+  ui: UiSettings;
   /** optional app areas; off removes them from nav and the widget sheet */
   modules: ModuleToggles;
   nutrition: NutritionTargets;
@@ -101,6 +112,14 @@ export interface OrbitSettings {
 export const DEFAULT_SETTINGS: OrbitSettings = {
   theme: DEFAULT_THEME,
   background: { id: null, dim: 0.35, blur: 0, desaturate: 0, particles: true },
+  ui: {
+    accent: null,
+    radius: "soft",
+    density: "cozy",
+    fontScale: 1,
+    clockSeconds: false,
+    contrast: "normal",
+  },
   modules: { train: true, reflect: true, sounds: true, teams: true },
   nutrition: { calories: 2400, protein: 150, carbs: 250, fat: 80 },
   motion: "balanced",
@@ -198,6 +217,8 @@ export function normalizeSettings(raw: unknown): OrbitSettings {
   const settings: OrbitSettings = { ...DEFAULT_SETTINGS, ...r };
   // nested objects deep-fill so fields added later hydrate with defaults
   settings.background = { ...DEFAULT_SETTINGS.background, ...(r.background ?? {}) };
+  settings.ui = { ...DEFAULT_SETTINGS.ui, ...(r.ui ?? {}) };
+  if (![0.9, 1, 1.1].includes(settings.ui.fontScale)) settings.ui.fontScale = 1;
   if (!settings.todayLayout && r.layoutPreset) {
     settings.todayLayout = migrateLegacyLayout(r.layoutPreset, r.hiddenWidgets ?? []);
   }
@@ -210,7 +231,7 @@ export function applySettingsToDocument(s: OrbitSettings) {
   root.dataset.theme = s.theme;
   root.dataset.motion =
     s.reducedMotion || s.motion === "low" ? "off" : s.motion;
-  root.dataset.density = s.density;
+  // note: dataset.density / radius / contrast belong to <UiVars/> (ui group)
   root.style.setProperty("--ui-opacity", String(s.uiOpacity));
   root.style.setProperty("--ui-blur", `${s.uiBlur}px`);
   root.style.setProperty("--ui-brightness", String(s.brightness));

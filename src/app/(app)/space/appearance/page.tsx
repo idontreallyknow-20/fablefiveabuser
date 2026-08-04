@@ -7,12 +7,15 @@ import {
   DEFAULT_SETTINGS,
   useSettings,
   type BackgroundSettings,
+  type UiSettings,
 } from "@/lib/settings/store";
 import { Segmented, Toggle } from "@/components/ui/Segmented";
 import { LAYOUT_PRESETS } from "@/lib/settings/layout";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { IconPlus, IconTrash } from "@/components/ui/Icons";
+import { AccentSwatches } from "@/components/appearance/AccentSwatches";
+import { InspirationChips } from "@/components/appearance/InspirationChips";
 import { BUILTIN_BACKGROUNDS } from "@/lib/backgrounds/builtins";
 import {
   BACKGROUNDS_KEY,
@@ -59,6 +62,15 @@ function Slider({
         </span>
       </span>
     </label>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 py-1.5">
+      <span className="text-sm text-ink">{label}</span>
+      {children}
+    </div>
   );
 }
 
@@ -129,8 +141,10 @@ export default function AppearancePage() {
   const [uploading, setUploading] = useState(false);
 
   const bg = settings.background;
+  const ui = settings.ui;
   const setBg = (patch: Partial<BackgroundSettings>) =>
     set({ background: { ...bg, ...patch } });
+  const setUi = (patch: Partial<UiSettings>) => set({ ui: { ...ui, ...patch } });
 
   async function onUploadFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -148,10 +162,13 @@ export default function AppearancePage() {
     }
   }
 
+  const gap = { gap: "calc(2rem * var(--gap-scale, 1))" };
+  const cardGap = { gap: "calc(1rem * var(--gap-scale, 1))" };
+
   return (
-    <div className="space-y-8 pb-8">
-      <section aria-label="Theme">
-        <h2 className="eyebrow mb-3">Theme</h2>
+    <div className="flex flex-col pb-8" style={gap}>
+      <section aria-label="Scene">
+        <h2 className="eyebrow mb-3">Scene</h2>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
           {THEME_LIST.map((t) => {
             const active = settings.theme === t.id;
@@ -181,6 +198,135 @@ export default function AppearancePage() {
           })}
         </div>
       </section>
+
+      <section aria-label="Accent">
+        <h2 className="eyebrow mb-3">Accent</h2>
+        <AccentSwatches value={ui.accent} onChange={(accent) => setUi({ accent })} />
+      </section>
+
+      <div className="grid items-start lg:grid-cols-2" style={cardGap}>
+        <section aria-label="Shape" className="surface p-5">
+          <h2 className="eyebrow mb-3">Shape</h2>
+          <Row label="Corners">
+            <Segmented
+              label="Corners"
+              size="sm"
+              value={ui.radius}
+              onChange={(radius) => setUi({ radius })}
+              options={[
+                { value: "sharp", label: "Sharp" },
+                { value: "soft", label: "Soft" },
+                { value: "round", label: "Round" },
+              ]}
+            />
+          </Row>
+          <Row label="Density">
+            <Segmented
+              label="Density"
+              size="sm"
+              value={ui.density}
+              onChange={(density) => setUi({ density })}
+              options={[
+                { value: "compact", label: "Compact" },
+                { value: "cozy", label: "Cozy" },
+                { value: "airy", label: "Airy" },
+              ]}
+            />
+          </Row>
+          <Row label="Type scale">
+            <Segmented
+              label="Type scale"
+              size="sm"
+              value={String(ui.fontScale)}
+              onChange={(v) => setUi({ fontScale: Number(v) as UiSettings["fontScale"] })}
+              options={[
+                { value: "0.9", label: "90" },
+                { value: "1", label: "100" },
+                { value: "1.1", label: "110" },
+              ]}
+            />
+          </Row>
+          <Row label="Contrast">
+            <Segmented
+              label="Contrast"
+              size="sm"
+              value={ui.contrast}
+              onChange={(contrast) => setUi({ contrast })}
+              options={[
+                { value: "normal", label: "Normal" },
+                { value: "high", label: "High" },
+              ]}
+            />
+          </Row>
+        </section>
+
+        <section aria-label="Clock" className="surface p-5">
+          <h2 className="eyebrow mb-3">Clock</h2>
+          <Toggle
+            checked={ui.clockSeconds}
+            onChange={(clockSeconds) => setUi({ clockSeconds })}
+            label="Seconds"
+          />
+        </section>
+
+        <section aria-label="Interface" className="surface p-5">
+          <h2 className="eyebrow mb-3">Interface</h2>
+          <Slider
+            label="Brightness"
+            value={settings.brightness}
+            min={0.6}
+            max={1}
+            step={0.05}
+            onChange={(brightness) => set({ brightness })}
+            format={(v) => `${Math.round(v * 100)}%`}
+          />
+          <Slider
+            label="Panel blur"
+            value={settings.uiBlur}
+            min={0}
+            max={16}
+            step={1}
+            onChange={(uiBlur) => set({ uiBlur })}
+            format={(v) => `${v}px`}
+          />
+          <Slider
+            label="Panel opacity"
+            value={settings.uiOpacity}
+            min={0.7}
+            max={1}
+            step={0.05}
+            onChange={(uiOpacity) => set({ uiOpacity })}
+            format={(v) => `${Math.round(v * 100)}%`}
+          />
+        </section>
+
+        <section aria-label="Motion" className="surface p-5">
+          <h2 className="eyebrow mb-3">Motion</h2>
+          <Row label="Level">
+            <Segmented
+              label="Level"
+              size="sm"
+              value={settings.motion}
+              onChange={(motion) => set({ motion })}
+              options={[
+                { value: "low", label: "Low" },
+                { value: "balanced", label: "Balanced" },
+                { value: "cinematic", label: "Cinematic" },
+              ]}
+            />
+          </Row>
+          <Toggle
+            checked={settings.reducedMotion}
+            onChange={(reducedMotion) => set({ reducedMotion })}
+            label="Reduce motion"
+          />
+          <Toggle
+            checked={settings.adaptivePerf}
+            onChange={(adaptivePerf) => set({ adaptivePerf })}
+            label="Adaptive performance"
+          />
+        </section>
+      </div>
 
       <section aria-label="Background">
         <h2 className="eyebrow mb-3">Background</h2>
@@ -300,292 +446,218 @@ export default function AppearancePage() {
             />
           </div>
         )}
-      </section>
-
-      <section aria-label="Today layout" className="surface p-5">
-        <h2 className="eyebrow mb-3">Today layout</h2>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          {LAYOUT_PRESETS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => set({ todayLayout: p.build() })}
-              className="rounded-xl border border-line px-3.5 py-3 text-left transition-colors duration-[var(--dur-base)] hover:border-(--accent)/50"
-            >
-              <p className="text-[13.5px] font-medium text-ink">{p.name}</p>
-            </button>
-          ))}
+        <div className="mt-5">
+          <InspirationChips />
         </div>
       </section>
 
-      <section aria-label="Motion" className="surface p-5">
-        <h2 className="eyebrow mb-3">Motion</h2>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-ink">Motion level</span>
-            <Segmented
-              label="Motion level"
-              value={settings.motion}
-              onChange={(motion) => set({ motion })}
-              options={[
-                { value: "low", label: "Low" },
-                { value: "balanced", label: "Balanced" },
-                { value: "cinematic", label: "Cinematic" },
-              ]}
-            />
+      <div className="grid items-start lg:grid-cols-2" style={cardGap}>
+        <section aria-label="Environment" className="surface p-5">
+          <h2 className="eyebrow mb-3">Environment</h2>
+          <Toggle
+            checked={settings.weatherReactive}
+            onChange={(weatherReactive) => set({ weatherReactive })}
+            label="Live weather"
+          />
+          <Toggle
+            checked={settings.timeReactive}
+            onChange={(timeReactive) => set({ timeReactive })}
+            label="Live daylight"
+          />
+          <Toggle
+            checked={settings.albumGlow}
+            onChange={(albumGlow) => set({ albumGlow })}
+            label="Album light"
+          />
+          <div className="mt-3 grid grid-cols-1 gap-3 border-t border-line pt-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-medium text-ink-dim">Weather override</span>
+              <select
+                value={settings.weatherOverride ?? ""}
+                onChange={(e) =>
+                  set({
+                    weatherOverride: (e.target.value || null) as typeof settings.weatherOverride,
+                  })
+                }
+                className="h-11 rounded-xl border border-line bg-bg1 px-3 text-sm text-ink"
+              >
+                <option value="">Follow real weather</option>
+                <option value="clear">Clear</option>
+                <option value="clouds">Clouds</option>
+                <option value="drizzle">Drizzle</option>
+                <option value="rain">Rain</option>
+                <option value="storm">Storm</option>
+                <option value="snow">Snow</option>
+                <option value="fog">Fog</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-medium text-ink-dim">Time override</span>
+              <select
+                value={settings.phaseOverride ?? ""}
+                onChange={(e) =>
+                  set({ phaseOverride: (e.target.value || null) as typeof settings.phaseOverride })
+                }
+                className="h-11 rounded-xl border border-line bg-bg1 px-3 text-sm text-ink"
+              >
+                <option value="">Follow the real sky</option>
+                <option value="predawn">Predawn</option>
+                <option value="sunrise">Sunrise</option>
+                <option value="morning">Morning</option>
+                <option value="midday">Midday</option>
+                <option value="golden">Golden hour</option>
+                <option value="sunset">Sunset</option>
+                <option value="blue-hour">Blue hour</option>
+                <option value="night">Night</option>
+              </select>
+            </label>
           </div>
+        </section>
+
+        <section aria-label="Automatic theme" className="surface p-5">
+          <h2 className="eyebrow mb-3">Automatic theme</h2>
           <Toggle
-            checked={settings.reducedMotion}
-            onChange={(reducedMotion) => set({ reducedMotion })}
-            label="Reduce motion"
+            checked={settings.autoSchedule.enabled}
+            onChange={(enabled) => set({ autoSchedule: { ...settings.autoSchedule, enabled } })}
+            label="Scheduled themes"
           />
-          <Toggle
-            checked={settings.adaptivePerf}
-            onChange={(adaptivePerf) => set({ adaptivePerf })}
-            label="Adaptive performance"
-          />
-        </div>
-      </section>
-
-      <section aria-label="Interface" className="surface p-5">
-        <h2 className="eyebrow mb-3">Interface</h2>
-        <Slider
-          label="Brightness"
-          value={settings.brightness}
-          min={0.6}
-          max={1}
-          step={0.05}
-          onChange={(brightness) => set({ brightness })}
-          format={(v) => `${Math.round(v * 100)}%`}
-        />
-        <Slider
-          label="Background blur"
-          value={settings.uiBlur}
-          min={0}
-          max={16}
-          step={1}
-          onChange={(uiBlur) => set({ uiBlur })}
-          format={(v) => `${v}px`}
-        />
-        <Slider
-          label="Panel opacity"
-          value={settings.uiOpacity}
-          min={0.7}
-          max={1}
-          step={0.05}
-          onChange={(uiOpacity) => set({ uiOpacity })}
-          format={(v) => `${Math.round(v * 100)}%`}
-        />
-        <Slider
-          label="Text size"
-          value={settings.textScale}
-          min={0.9}
-          max={1.2}
-          step={0.05}
-          onChange={(textScale) => set({ textScale })}
-          format={(v) => `${Math.round(v * 100)}%`}
-        />
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-sm text-ink">Density</span>
-          <Segmented
-            label="Density"
-            value={settings.density}
-            onChange={(density) => set({ density })}
-            options={[
-              { value: "comfortable", label: "Comfortable" },
-              { value: "compact", label: "Compact" },
-            ]}
-          />
-        </div>
-      </section>
-
-      <section aria-label="Environment" className="surface p-5">
-        <h2 className="eyebrow mb-3">Environment</h2>
-        <Toggle
-          checked={settings.weatherReactive}
-          onChange={(weatherReactive) => set({ weatherReactive })}
-          label="React to real weather"
-        />
-        <Toggle
-          checked={settings.timeReactive}
-          onChange={(timeReactive) => set({ timeReactive })}
-          label="React to time of day"
-        />
-        <Toggle
-          checked={settings.albumGlow}
-          onChange={(albumGlow) => set({ albumGlow })}
-          label="Album light"
-        />
-        <div className="mt-3 grid grid-cols-1 gap-3 border-t border-line pt-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-ink-dim">Weather override</span>
-            <select
-              value={settings.weatherOverride ?? ""}
-              onChange={(e) =>
-                set({
-                  weatherOverride: (e.target.value || null) as typeof settings.weatherOverride,
-                })
-              }
-              className="h-11 rounded-xl border border-line bg-bg1 px-3 text-sm text-ink"
-            >
-              <option value="">Follow real weather</option>
-              <option value="clear">Clear</option>
-              <option value="clouds">Clouds</option>
-              <option value="drizzle">Drizzle</option>
-              <option value="rain">Rain</option>
-              <option value="storm">Storm</option>
-              <option value="snow">Snow</option>
-              <option value="fog">Fog</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-ink-dim">Time override</span>
-            <select
-              value={settings.phaseOverride ?? ""}
-              onChange={(e) =>
-                set({ phaseOverride: (e.target.value || null) as typeof settings.phaseOverride })
-              }
-              className="h-11 rounded-xl border border-line bg-bg1 px-3 text-sm text-ink"
-            >
-              <option value="">Follow the real sky</option>
-              <option value="predawn">Predawn</option>
-              <option value="sunrise">Sunrise</option>
-              <option value="morning">Morning</option>
-              <option value="midday">Midday</option>
-              <option value="golden">Golden hour</option>
-              <option value="sunset">Sunset</option>
-              <option value="blue-hour">Blue hour</option>
-              <option value="night">Night</option>
-            </select>
-          </label>
-        </div>
-      </section>
-
-      <section aria-label="Automatic theme" className="surface p-5">
-        <h2 className="eyebrow mb-3">Automatic theme</h2>
-        <Toggle
-          checked={settings.autoSchedule.enabled}
-          onChange={(enabled) => set({ autoSchedule: { ...settings.autoSchedule, enabled } })}
-          label="Switch themes on a schedule"
-        />
-        {settings.autoSchedule.enabled && (
-          <div className="mt-3 space-y-3 border-t border-line pt-4">
-            <Toggle
-              checked={settings.autoSchedule.followSun}
-              onChange={(followSun) =>
-                set({ autoSchedule: { ...settings.autoSchedule, followSun } })
-              }
-              label="Follow sunrise and sunset"
-            />
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-[13px] font-medium text-ink-dim">Day theme</span>
-                <select
-                  value={settings.autoSchedule.dayTheme}
-                  onChange={(e) =>
-                    set({
-                      autoSchedule: {
-                        ...settings.autoSchedule,
-                        dayTheme: e.target.value as ThemeId,
-                      },
-                    })
-                  }
-                  className="h-11 rounded-xl border border-line bg-bg1 px-3 text-sm text-ink"
-                >
-                  {THEME_LIST.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-[13px] font-medium text-ink-dim">Night theme</span>
-                <select
-                  value={settings.autoSchedule.nightTheme}
-                  onChange={(e) =>
-                    set({
-                      autoSchedule: {
-                        ...settings.autoSchedule,
-                        nightTheme: e.target.value as ThemeId,
-                      },
-                    })
-                  }
-                  className="h-11 rounded-xl border border-line bg-bg1 px-3 text-sm text-ink"
-                >
-                  {THEME_LIST.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            {!settings.autoSchedule.followSun && (
+          {settings.autoSchedule.enabled && (
+            <div className="mt-3 space-y-3 border-t border-line pt-4">
+              <Toggle
+                checked={settings.autoSchedule.followSun}
+                onChange={(followSun) =>
+                  set({ autoSchedule: { ...settings.autoSchedule, followSun } })
+                }
+                label="Follow the sun"
+              />
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-[13px] font-medium text-ink-dim">Day starts</span>
-                  <input
-                    type="time"
-                    value={settings.autoSchedule.dayStart}
-                    onChange={(e) =>
-                      set({ autoSchedule: { ...settings.autoSchedule, dayStart: e.target.value } })
-                    }
-                    className="tnum h-11 rounded-xl border border-line bg-bg1 px-3 font-mono text-sm text-ink"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[13px] font-medium text-ink-dim">Night starts</span>
-                  <input
-                    type="time"
-                    value={settings.autoSchedule.nightStart}
+                  <span className="text-[13px] font-medium text-ink-dim">Day theme</span>
+                  <select
+                    value={settings.autoSchedule.dayTheme}
                     onChange={(e) =>
                       set({
-                        autoSchedule: { ...settings.autoSchedule, nightStart: e.target.value },
+                        autoSchedule: {
+                          ...settings.autoSchedule,
+                          dayTheme: e.target.value as ThemeId,
+                        },
                       })
                     }
-                    className="tnum h-11 rounded-xl border border-line bg-bg1 px-3 font-mono text-sm text-ink"
-                  />
+                    className="h-11 rounded-xl border border-line bg-bg1 px-3 text-sm text-ink"
+                  >
+                    {THEME_LIST.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[13px] font-medium text-ink-dim">Night theme</span>
+                  <select
+                    value={settings.autoSchedule.nightTheme}
+                    onChange={(e) =>
+                      set({
+                        autoSchedule: {
+                          ...settings.autoSchedule,
+                          nightTheme: e.target.value as ThemeId,
+                        },
+                      })
+                    }
+                    className="h-11 rounded-xl border border-line bg-bg1 px-3 text-sm text-ink"
+                  >
+                    {THEME_LIST.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
-            )}
-          </div>
-        )}
-      </section>
+              {!settings.autoSchedule.followSun && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-[13px] font-medium text-ink-dim">Day starts</span>
+                    <input
+                      type="time"
+                      value={settings.autoSchedule.dayStart}
+                      onChange={(e) =>
+                        set({
+                          autoSchedule: { ...settings.autoSchedule, dayStart: e.target.value },
+                        })
+                      }
+                      className="tnum h-11 rounded-xl border border-line bg-bg1 px-3 font-mono text-sm text-ink"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-[13px] font-medium text-ink-dim">Night starts</span>
+                    <input
+                      type="time"
+                      value={settings.autoSchedule.nightStart}
+                      onChange={(e) =>
+                        set({
+                          autoSchedule: { ...settings.autoSchedule, nightStart: e.target.value },
+                        })
+                      }
+                      className="tnum h-11 rounded-xl border border-line bg-bg1 px-3 font-mono text-sm text-ink"
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
 
-      <section aria-label="Ambient mode" className="surface p-5">
-        <h2 className="eyebrow mb-3">Ambient mode</h2>
-        <Slider
-          label="Start after inactivity"
-          value={settings.ambient.autoAfterMin}
-          min={0}
-          max={60}
-          step={5}
-          onChange={(autoAfterMin) => set({ ambient: { ...settings.ambient, autoAfterMin } })}
-          format={(v) => (v === 0 ? "Off" : `${v}m`)}
-        />
-        <Toggle
-          checked={settings.ambient.wakeLock}
-          onChange={(wakeLock) => set({ ambient: { ...settings.ambient, wakeLock } })}
-          label="Keep the screen awake"
-        />
-        <Toggle
-          checked={settings.ambient.burnInProtection}
-          onChange={(burnInProtection) =>
-            set({ ambient: { ...settings.ambient, burnInProtection } })
-          }
-          label="Protect against burn-in"
-        />
-        <Toggle
-          checked={settings.ambient.nightDimming}
-          onChange={(nightDimming) => set({ ambient: { ...settings.ambient, nightDimming } })}
-          label="Dim late at night"
-        />
-        <Toggle
-          checked={settings.ambient.showReminder}
-          onChange={(showReminder) => set({ ambient: { ...settings.ambient, showReminder } })}
-          label="Show one gentle reminder"
-        />
-      </section>
+        <section aria-label="Today layout" className="surface p-5">
+          <h2 className="eyebrow mb-3">Today layout</h2>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {LAYOUT_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => set({ todayLayout: p.build() })}
+                className="rounded-xl border border-line px-3.5 py-3 text-left transition-colors duration-[var(--dur-base)] hover:border-(--accent)/50"
+              >
+                <p className="text-[13.5px] font-medium text-ink">{p.name}</p>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section aria-label="Ambient mode" className="surface p-5">
+          <h2 className="eyebrow mb-3">Ambient mode</h2>
+          <Slider
+            label="Start after"
+            value={settings.ambient.autoAfterMin}
+            min={0}
+            max={60}
+            step={5}
+            onChange={(autoAfterMin) => set({ ambient: { ...settings.ambient, autoAfterMin } })}
+            format={(v) => (v === 0 ? "Off" : `${v}m`)}
+          />
+          <Toggle
+            checked={settings.ambient.wakeLock}
+            onChange={(wakeLock) => set({ ambient: { ...settings.ambient, wakeLock } })}
+            label="Keep awake"
+          />
+          <Toggle
+            checked={settings.ambient.burnInProtection}
+            onChange={(burnInProtection) =>
+              set({ ambient: { ...settings.ambient, burnInProtection } })
+            }
+            label="Burn-in shield"
+          />
+          <Toggle
+            checked={settings.ambient.nightDimming}
+            onChange={(nightDimming) => set({ ambient: { ...settings.ambient, nightDimming } })}
+            label="Night dimming"
+          />
+          <Toggle
+            checked={settings.ambient.showReminder}
+            onChange={(showReminder) => set({ ambient: { ...settings.ambient, showReminder } })}
+            label="Ambient reminders"
+          />
+        </section>
+      </div>
 
       <div className="flex justify-end">
         <Button

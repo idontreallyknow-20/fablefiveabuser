@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { IconCalendar } from "@/components/ui/Icons";
 import { useSettings } from "@/lib/settings/store";
@@ -60,29 +59,20 @@ export function TodayEvents() {
 
   if (!status) return <div className="surface h-24 animate-pulse" aria-hidden />;
 
-  if (!status.configured || !status.connected) {
+  // Unconfigured installs hide the widget; the built-in calendar is the
+  // core surface and Google connect lives in /space/connections.
+  if (!status.configured) return null;
+
+  if (!status.connected) {
     return (
-      <div className="surface flex items-center gap-3.5 p-4">
+      <div className="surface flex items-center justify-between gap-3 p-4">
         <IconCalendar size={18} className="shrink-0 text-ink-faint" />
-        <div>
-          <p className="text-sm text-ink-dim">
-            {status.configured ? "Google Calendar is not connected" : "Calendar sync is not set up yet"}
-          </p>
-          <p className="text-[12.5px] text-ink-faint">
-            {status.configured ? (
-              <a href="/api/google/auth" className="text-accent hover:underline">
-                Connect Google Calendar
-              </a>
-            ) : (
-              <>
-                Add the API keys, then connect in{" "}
-                <Link href="/space/connections" className="text-accent hover:underline">
-                  Space
-                </Link>
-              </>
-            )}
-          </p>
-        </div>
+        <a
+          href="/api/google/auth"
+          className="shrink-0 rounded-xl border border-(--accent)/35 bg-accent-soft px-3.5 py-2 text-[13px] font-medium text-accent transition-colors hover:bg-(--accent)/22"
+        >
+          Connect
+        </a>
       </div>
     );
   }

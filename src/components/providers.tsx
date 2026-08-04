@@ -4,6 +4,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useEffect, useState } from "react";
 import { SettingsSync } from "@/lib/settings/SettingsSync";
+import { UiVars } from "@/components/appearance/UiVars";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ServiceWorker } from "@/components/shell/ServiceWorker";
 import { createIdbPersister, shouldPersistQuery } from "@/lib/offline/persister";
@@ -42,6 +43,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <ToastProvider>
         <SettingsSync />
+        <UiVars />
         <ServiceWorker />
         {children}
       </ToastProvider>

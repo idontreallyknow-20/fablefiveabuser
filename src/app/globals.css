@@ -474,3 +474,54 @@ body {
   animation-duration: 1ms;
   animation-delay: 0ms;
 }
+
+/* --- ui customization vars --- */
+
+/* corners: retune the shared shells; utilities stay untouched elsewhere */
+:root[data-radius="sharp"] .surface,
+:root[data-radius="sharp"] .surface-raised,
+:root[data-radius="sharp"] .rounded-2xl {
+  border-radius: 10px;
+}
+:root[data-radius="sharp"] .rounded-xl {
+  border-radius: 8px;
+}
+:root[data-radius="sharp"] .surface-overlay {
+  border-radius: 12px;
+}
+:root[data-radius="round"] .surface,
+:root[data-radius="round"] .surface-raised,
+:root[data-radius="round"] .rounded-2xl {
+  border-radius: 24px;
+}
+:root[data-radius="round"] .rounded-xl {
+  border-radius: 18px;
+}
+:root[data-radius="round"] .surface-overlay {
+  border-radius: 26px;
+}
+
+/* density: section rhythm (consumed via --gap-scale) + reading rhythm */
+:root {
+  --gap-scale: 1;
+}
+:root[data-density="compact"] {
+  --gap-scale: 0.78;
+}
+:root[data-density="compact"] body {
+  line-height: 1.42;
+}
+:root[data-density="airy"] {
+  --gap-scale: 1.28;
+}
+:root[data-density="airy"] body {
+  line-height: 1.62;
+}
+
+/* contrast: lift the secondary ink and hairlines, per active theme ink */
+:root[data-contrast="high"] {
+  --ink-dim: color-mix(in srgb, var(--ink) 86%, transparent);
+  --ink-faint: color-mix(in srgb, var(--ink) 64%, transparent);
+  --line: color-mix(in srgb, var(--ink) 16%, transparent);
+  --line-strong: color-mix(in srgb, var(--ink) 30%, transparent);
+}

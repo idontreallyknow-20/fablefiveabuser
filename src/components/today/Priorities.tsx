@@ -69,10 +69,6 @@ function PriorityRow({
             await actions.uncomplete(task);
           } else {
             await actions.complete(task);
-            toast("Done. Well placed.", "success", {
-              label: "Undo",
-              onClick: () => actions.uncomplete(task),
-            });
           }
         }}
         className={`mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border transition-all duration-[var(--dur-base)] ${
@@ -109,7 +105,10 @@ function PriorityRow({
             aria-label={`Move ${task.title} to tomorrow`}
             onClick={async () => {
               await actions.moveToTomorrow(task);
-              toast("Moved to tomorrow");
+              toast("Tomorrow", "info", {
+                label: "Undo",
+                onClick: () => actions.promote(task, task.priority_slot ?? 1, todayISO()),
+              });
             }}
             className="rounded-lg p-1.5 text-ink-faint transition-colors hover:bg-bg2 hover:text-ink"
           >
@@ -120,7 +119,10 @@ function PriorityRow({
             aria-label={`Defer ${task.title} to backlog`}
             onClick={async () => {
               await actions.defer(task);
-              toast("Back in the backlog");
+              toast("Backlog", "info", {
+                label: "Undo",
+                onClick: () => actions.promote(task, task.priority_slot ?? 1, todayISO()),
+              });
             }}
             className="rounded-lg p-1.5 text-ink-faint transition-colors hover:bg-bg2 hover:text-ink"
           >
@@ -163,7 +165,6 @@ export function Priorities() {
   const { data: projects = [] } = useProjects();
   const actions = useTaskActions();
   const create = useCreateTask();
-  const { toast } = useToast();
   const energyToday = useSettings((s) => s.settings.energyToday);
 
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
@@ -212,7 +213,6 @@ export function Priorities() {
       if (created) setPickerSlot(null);
     } else {
       await create.mutateAsync({ title });
-      toast("Added to backlog");
     }
   };
 
