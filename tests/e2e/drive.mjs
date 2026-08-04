@@ -215,6 +215,22 @@ try {
     check("calendar views switch", false, "skipped");
   }
 
+  // ---- quick capture (share-target path) ----
+  await page.goto(`${BASE}/capture?title=Read%20article&url=https%3A%2F%2Fexample.com%2Fpost`, {
+    waitUntil: "networkidle",
+  });
+  await page.waitForTimeout(600);
+  const capInput = page.getByLabel("Task", { exact: true });
+  if (await capInput.isVisible().catch(() => false)) {
+    const prefilled = (await capInput.inputValue()).includes("Read article");
+    await page.getByRole("button", { name: "Add" }).click();
+    await page.waitForURL(/\/today/, { timeout: 8000 }).catch(() => {});
+    check("capture prefills share and saves", prefilled && page.url().includes("/today"));
+    await shot("28-capture");
+  } else {
+    check("capture prefills share and saves", false, "capture input not found");
+  }
+
   // ---- weekly review ----
   await page.goto(`${BASE}/review`, { waitUntil: "networkidle" });
   await page.waitForTimeout(800);
