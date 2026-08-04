@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { IconSpotify } from "@/components/ui/Icons";
 import { useSpotifyStatus, useSpotifyPlayback } from "@/lib/spotify/useSpotify";
 import { PlayerControls } from "./PlayerControls";
-import { PlayerExpanded } from "./PlayerExpanded";
 import { WebPlayer } from "./WebPlayer";
 
 /**
@@ -16,7 +15,7 @@ import { WebPlayer } from "./WebPlayer";
 export function PlayerCard() {
   const { data: status } = useSpotifyStatus();
   const playback = useSpotifyPlayback(Boolean(status?.connected));
-  const [expanded, setExpanded] = useState(false);
+  const router = useRouter();
 
   if (!status) {
     return <div className="surface h-[104px] animate-pulse" aria-hidden />;
@@ -65,14 +64,14 @@ export function PlayerCard() {
         className="flex cursor-pointer items-center gap-3.5"
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("button")) return;
-          setExpanded(true);
+          router.push("/music");
         }}
-        role="button"
+        role="link"
         tabIndex={0}
         onKeyDown={(e) => {
-          if (e.key === "Enter") setExpanded(true);
+          if (e.key === "Enter") router.push("/music");
         }}
-        aria-label="Open the full player"
+        aria-label="Open the music page"
       >
         {track?.albumArt ? (
           // eslint-disable-next-line @next/next/no-img-element -- Spotify CDN artwork must be hotlinked per their terms
@@ -112,7 +111,6 @@ export function PlayerCard() {
           </div>
         </div>
       )}
-      <PlayerExpanded open={expanded} onClose={() => setExpanded(false)} playback={playback} />
     </div>
   );
 }

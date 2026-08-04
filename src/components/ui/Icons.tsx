@@ -128,6 +128,13 @@ export const IconChevronRight = (p: P) => (
   </I>
 );
 
+export const IconSound = (p: P) => (
+  <I {...p}>
+    <path d="M4 8v4h3l4 3.5v-11L7 8H4z" />
+    <path d="M13.5 7.5a3.5 3.5 0 010 5" />
+  </I>
+);
+
 export const IconChevronLeft = (p: P) => (
   <I {...p}>
     <path d="M12.5 4.5L7 10l5.5 5.5" />

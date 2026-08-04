@@ -8,6 +8,14 @@ canvas code written for this project, and the film grain is a procedural SVG
 is bundled. Licensing research that led to this approach is recorded in
 `docs/research/asset-sourcing.md` (date accessed: 2026-07-16).
 
+## Built-in backgrounds
+
+The six backdrop files in `public/backgrounds/` (dusk, dawn, deep-sea,
+nebula, forest-mist, warm-lamp) are original, generated in-repo by
+`scripts/generate-backgrounds.mjs` — procedural SVG gradients written for
+this project, no third-party imagery. Effectively CC0/original work; no
+attribution required.
+
 ## Fonts (bundled at build time via next/font)
 
 | Asset | Purpose | Author | Source | License | Attribution required | Location | Modifications |

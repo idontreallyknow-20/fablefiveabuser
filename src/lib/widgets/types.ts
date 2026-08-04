@@ -13,7 +13,11 @@ export type WidgetKind =
   | "pomodoro"
   | "stats"
   | "quick-links"
-  | "habit-heatmap";
+  | "habit-heatmap"
+  | "soundpad"
+  | "macros"
+  | "meals"
+  | "skincare";
 
 export interface WidgetInstance {
   id: string;

@@ -109,8 +109,10 @@ export class Scene {
     private theme: ThemeDef,
     env: SceneEnv,
     private factories: Record<string, EffectFactory>,
+    opts?: { alpha?: boolean },
   ) {
-    const ctx = canvas.getContext("2d", { alpha: false });
+    // opaque by default; a custom backdrop underneath needs an alpha context
+    const ctx = canvas.getContext("2d", { alpha: opts?.alpha ?? false });
     if (!ctx) throw new Error("canvas 2d unavailable");
     this.ctx = ctx;
     this.env = env;

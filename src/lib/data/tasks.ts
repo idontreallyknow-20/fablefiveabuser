@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Tables, TablesInsert, TablesUpdate } from "@/lib/db/types";
+import { runOrQueue } from "@/lib/offline/outbox";
 
 export type Task = Tables<"tasks">;
 
@@ -26,11 +27,12 @@ export function tomorrowISO(): string {
 
 async function userId() {
   const supabase = supabaseBrowser();
+  // session is local-first, so this also works while offline
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not signed in");
-  return user.id;
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.user) throw new Error("Not signed in");
+  return session.user.id;
 }
 
 /** live invalidation across displays through supabase realtime */
@@ -103,13 +105,13 @@ export function useCreateTask() {
     mutationFn: async (input: Omit<TablesInsert<"tasks">, "user_id">) => {
       const supabase = supabaseBrowser();
       const uid = await userId();
-      const { data, error } = await supabase
-        .from("tasks")
-        .insert({ ...input, user_id: uid })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      // client-generated id so offline-queued follow-up edits can target it
+      const row = { ...input, id: input.id ?? crypto.randomUUID(), user_id: uid };
+      await runOrQueue({ table: "tasks", op: "insert", payload: row }, async () => {
+        const { error } = await supabase.from("tasks").insert(row);
+        if (error) throw error;
+      });
+      return row;
     },
     onSettled: () => invalidate(qc),
   });
@@ -120,8 +122,13 @@ export function useUpdateTask() {
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: TablesUpdate<"tasks"> }) => {
       const supabase = supabaseBrowser();
-      const { error } = await supabase.from("tasks").update(patch).eq("id", id);
-      if (error) throw error;
+      await runOrQueue(
+        { table: "tasks", op: "update", rowId: id, payload: patch },
+        async () => {
+          const { error } = await supabase.from("tasks").update(patch).eq("id", id);
+          if (error) throw error;
+        },
+      );
     },
     onMutate: async ({ id, patch }) => {
       await qc.cancelQueries({ queryKey: ["tasks"] });
@@ -147,8 +154,10 @@ export function useDeleteTask() {
   return useMutation({
     mutationFn: async (id: string) => {
       const supabase = supabaseBrowser();
-      const { error } = await supabase.from("tasks").delete().eq("id", id);
-      if (error) throw error;
+      await runOrQueue({ table: "tasks", op: "delete", rowId: id }, async () => {
+        const { error } = await supabase.from("tasks").delete().eq("id", id);
+        if (error) throw error;
+      });
     },
     onSettled: () => invalidate(qc),
   });

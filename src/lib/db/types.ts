@@ -342,6 +342,45 @@ export type Database = {
           },
         ]
       }
+      meals: {
+        Row: {
+          calories: number
+          carbs_g: number
+          created_at: string
+          date: string
+          fat_g: number
+          id: string
+          name: string
+          note: string
+          protein_g: number
+          user_id: string
+        }
+        Insert: {
+          calories?: number
+          carbs_g?: number
+          created_at?: string
+          date?: string
+          fat_g?: number
+          id?: string
+          name?: string
+          note?: string
+          protein_g?: number
+          user_id: string
+        }
+        Update: {
+          calories?: number
+          carbs_g?: number
+          created_at?: string
+          date?: string
+          fat_g?: number
+          id?: string
+          name?: string
+          note?: string
+          protein_g?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       nerf_content: {
         Row: {
           caption: string
@@ -746,6 +785,54 @@ export type Database = {
         }
         Relationships: []
       }
+      soundboard_pads: {
+        Row: {
+          color: string
+          created_at: string
+          gain: number
+          hotkey: string
+          id: string
+          kind: string
+          label: string
+          loop: boolean
+          params: Json
+          sample_path: string | null
+          slot: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          gain?: number
+          hotkey?: string
+          id?: string
+          kind?: string
+          label?: string
+          loop?: boolean
+          params?: Json
+          sample_path?: string | null
+          slot?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          gain?: number
+          hotkey?: string
+          id?: string
+          kind?: string
+          label?: string
+          loop?: boolean
+          params?: Json
+          sample_path?: string | null
+          slot?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           checklist: Json
@@ -930,6 +1017,48 @@ export type Database = {
           id?: string
           invite_code?: string
           name?: string
+        }
+        Relationships: []
+      }
+      user_backgrounds: {
+        Row: {
+          avg_color: string
+          created_at: string
+          duration_s: number | null
+          height: number | null
+          id: string
+          kind: string
+          overlay: Json
+          path: string
+          size_bytes: number | null
+          user_id: string
+          width: number | null
+        }
+        Insert: {
+          avg_color?: string
+          created_at?: string
+          duration_s?: number | null
+          height?: number | null
+          id?: string
+          kind: string
+          overlay?: Json
+          path: string
+          size_bytes?: number | null
+          user_id: string
+          width?: number | null
+        }
+        Update: {
+          avg_color?: string
+          created_at?: string
+          duration_s?: number | null
+          height?: number | null
+          id?: string
+          kind?: string
+          overlay?: Json
+          path?: string
+          size_bytes?: number | null
+          user_id?: string
+          width?: number | null
         }
         Relationships: []
       }

@@ -5,6 +5,7 @@ import { Scene, type SceneEnv, type SceneWeather } from "./engine";
 import { EFFECTS } from "./effects";
 import { THEMES, type ThemeId } from "@/lib/themes/registry";
 import { useSettings } from "@/lib/settings/store";
+import { particleOnlyTheme } from "@/lib/backgrounds/filters";
 import { useWeather } from "@/lib/weather/useWeather";
 import { getDayPhase, getMoonIllumination, SKY_PALETTES } from "@/lib/weather/phase";
 import { usePlaybackGlow } from "@/lib/spotify/glow";
@@ -58,6 +59,12 @@ export function AtmosphereCanvas({
 
   const themeId = themeOverride ?? settings.theme;
   const theme = THEMES[themeId];
+
+  // custom backdrop (BackdropMedia) replaces the scene composition; the
+  // canvas keeps only particle overlays. Override-driven mounts (theme
+  // previews, shared displays) always show the full scene.
+  const backdropActive = !themeOverride && Boolean(settings.background.id);
+  const backdropParticles = settings.background.particles;
 
   const [phaseTick, setPhaseTick] = useState(0);
   useEffect(() => {
@@ -149,7 +156,13 @@ export function AtmosphereCanvas({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const scene = new Scene(canvas, theme, env, EFFECTS);
+    const scene = new Scene(
+      canvas,
+      backdropActive ? particleOnlyTheme(theme) : theme,
+      env,
+      EFFECTS,
+      { alpha: backdropActive },
+    );
     sceneRef.current = scene;
 
     const parent = canvas.parentElement ?? document.body;
@@ -175,9 +188,9 @@ export function AtmosphereCanvas({
       scene.destroy();
       sceneRef.current = null;
     };
-    // theme identity change rebuilds the scene
+    // theme identity or backdrop-mode change rebuilds the scene
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [themeId]);
+  }, [themeId, backdropActive, backdropParticles]);
 
   // env updates without rebuild
   useEffect(() => {
@@ -212,13 +225,21 @@ export function AtmosphereCanvas({
     return () => window.removeEventListener("pointermove", onMove);
   }, [interactive]);
 
+  // backdrop without particles: no canvas work at all
+  if (backdropActive && !backdropParticles) return null;
+
   return (
     <div
       className={className ?? "fixed inset-0 -z-10"}
       style={{ filter: `brightness(var(--ui-brightness))` }}
       aria-hidden
     >
-      <canvas ref={canvasRef} className="block h-full w-full" />
+      {/* keyed: 2d context alpha is fixed at creation, so swap the element */}
+      <canvas
+        key={backdropActive ? "alpha" : "opaque"}
+        ref={canvasRef}
+        className="block h-full w-full"
+      />
       {hud && (
         <div className="pointer-events-none fixed right-2 top-2 z-50 rounded bg-black/70 px-2 py-1 font-mono text-[11px] text-white">
           {hud}

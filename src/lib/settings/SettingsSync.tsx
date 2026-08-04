@@ -40,10 +40,21 @@ export function SettingsSync() {
         .eq("id", user.id)
         .maybeSingle();
       if (cancelled) return;
-      const remote = (data?.settings ?? null) as Partial<OrbitSettings> | null;
+      const remote = (data?.settings ?? null) as
+        | (Partial<OrbitSettings> & { _savedAt?: string })
+        | null;
       if (remote && typeof remote === "object" && "theme" in remote) {
-        skipNextSave.current = true;
-        replaceAll(normalizeSettings(remote));
+        // newest copy wins so an older device can't clobber recent edits
+        const localSavedAt =
+          typeof window !== "undefined"
+            ? (JSON.parse(localStorage.getItem("orbit-settings-saved-at") ?? "null") as
+                | string
+                | null)
+            : null;
+        if (!localSavedAt || !remote._savedAt || remote._savedAt >= localSavedAt) {
+          skipNextSave.current = true;
+          replaceAll(normalizeSettings(remote));
+        }
       }
       markProfileHydrated();
     })();
@@ -66,9 +77,13 @@ export function SettingsSync() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+      const savedAt = new Date().toISOString();
+      localStorage.setItem("orbit-settings-saved-at", JSON.stringify(savedAt));
       await supabase
         .from("profiles")
-        .update({ settings: JSON.parse(JSON.stringify(settings)) })
+        .update({
+          settings: { ...JSON.parse(JSON.stringify(settings)), _savedAt: savedAt },
+        })
         .eq("id", user.id);
     }, 1200);
     return () => {

@@ -1072,6 +1072,393 @@ export const lampGlow: EffectFactory = () => {
   };
 };
 
+/* ---------------------------------------------------------------- aurora -- */
+
+const AURORA_COLORS = ["#3ddc97", "#4fb8c9", "#7d8ec4"];
+
+export const aurora: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  const ribbons = AURORA_COLORS.map((c, i) => ({
+    color: c,
+    x: 0.15 + i * 0.28 + rng() * 0.1,
+    ph: rng() * TAU,
+    speed: 0.05 + rng() * 0.04,
+    sprite: null as HTMLCanvasElement | null,
+  }));
+
+  const makeRibbon = (color: string) => {
+    const c = makeCanvas(220, 512);
+    const g = c.getContext("2d")!;
+    const grad = g.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, "transparent");
+    grad.addColorStop(0.25, color);
+    grad.addColorStop(0.8, "transparent");
+    g.fillStyle = grad;
+    // soft-edged column
+    const xg = g.createLinearGradient(0, 0, 220, 0);
+    xg.addColorStop(0, "transparent");
+    xg.addColorStop(0.5, color);
+    xg.addColorStop(1, "transparent");
+    g.fillStyle = xg;
+    g.globalCompositeOperation = "source-over";
+    g.fillRect(0, 0, 220, 512);
+    g.globalCompositeOperation = "destination-in";
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 220, 512);
+    return c;
+  };
+
+  return {
+    draw(ctx, s) {
+      const { w, h, t, intensity, px } = s;
+      ctx.globalCompositeOperation = "screen";
+      for (const r of ribbons) {
+        if (!r.sprite) r.sprite = makeRibbon(r.color);
+        const sway = Math.sin(t * r.speed * TAU + r.ph);
+        const x = w * r.x + sway * w * 0.05 + px * 18;
+        const skew = Math.sin(t * r.speed * TAU * 0.7 + r.ph) * 0.22;
+        const alpha = intensity * (0.16 + 0.08 * Math.sin(t * 0.11 + r.ph));
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, alpha);
+        ctx.translate(x, 0);
+        ctx.transform(1, 0, skew, 1, 0, 0);
+        ctx.drawImage(r.sprite, -110, -h * 0.06, 260, h * 0.85);
+        ctx.restore();
+      }
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
+    },
+  };
+};
+
+/* ------------------------------------------------------------- fireflies -- */
+
+export const fireflies: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let flies: { x: number; y: number; vx: number; vy: number; ph: number }[] = [];
+  let sprite: HTMLCanvasElement | null = null;
+
+  return {
+    resize(w, h) {
+      flies = Array.from({ length: 18 }, () => ({
+        x: rng() * w,
+        y: h * (0.45 + rng() * 0.5),
+        vx: (rng() - 0.5) * 12,
+        vy: (rng() - 0.5) * 6,
+        ph: rng() * TAU,
+      }));
+    },
+    draw(ctx, s) {
+      const { w, h, t, dt, intensity, env } = s;
+      if (!sprite) {
+        sprite = glowSprite(24, [
+          [0, "rgba(240, 224, 150, 1)"],
+          [0.3, "rgba(214, 190, 108, 0.5)"],
+          [1, "transparent"],
+        ]);
+      }
+      if (flies.length === 0) this.resize?.(w, h);
+      const count = Math.round(flies.length * intensity * env.quality);
+      for (let i = 0; i < count; i++) {
+        const f = flies[i];
+        if (!env.still) {
+          f.vx += (rng() - 0.5) * 8 * dt;
+          f.vy += (rng() - 0.5) * 5 * dt;
+          f.vx = Math.max(-16, Math.min(16, f.vx));
+          f.vy = Math.max(-9, Math.min(9, f.vy));
+          f.x += f.vx * dt;
+          f.y += f.vy * dt;
+        }
+        if (f.x < -10) f.x = w + 10;
+        if (f.x > w + 10) f.x = -10;
+        if (f.y < h * 0.35) f.y = h * 0.35;
+        if (f.y > h + 10) f.y = h * 0.6;
+        // slow pulse with occasional dark gaps
+        const pulse = Math.max(0, Math.sin(f.ph + t * 1.1));
+        ctx.globalAlpha = intensity * pulse * 0.8;
+        ctx.drawImage(sprite, f.x - 5, f.y - 5, 10, 10);
+      }
+      ctx.globalAlpha = 1;
+    },
+  };
+};
+
+/* ------------------------------------------------------- falling petals -- */
+
+function petalSprite(colors: string[]): HTMLCanvasElement[] {
+  return colors.map((color) => {
+    const c = makeCanvas(24, 24);
+    const g = c.getContext("2d")!;
+    g.fillStyle = color;
+    g.beginPath();
+    // teardrop petal
+    g.moveTo(12, 3);
+    g.bezierCurveTo(19, 7, 20, 16, 12, 21);
+    g.bezierCurveTo(4, 16, 5, 7, 12, 3);
+    g.closePath();
+    g.fill();
+    return c;
+  });
+}
+
+function fallingPetals(colors: string[], drift: number): EffectFactory {
+  return (seed) => {
+    const rng = mulberry32(seed);
+    let petals: {
+      x: number; y: number; sp: number; sw: number; ph: number; rot: number;
+      vr: number; size: number; variant: number;
+    }[] = [];
+    let sprites: HTMLCanvasElement[] | null = null;
+
+    return {
+      resize(w, h) {
+        petals = Array.from({ length: Math.round(w / 34) }, () => ({
+          x: rng() * w,
+          y: rng() * h,
+          sp: 22 + rng() * 30,
+          sw: 14 + rng() * 26,
+          ph: rng() * TAU,
+          rot: rng() * TAU,
+          vr: (rng() - 0.5) * 2.2,
+          size: 6 + rng() * 8,
+          variant: Math.floor(rng() * colors.length),
+        }));
+      },
+      draw(ctx, s) {
+        const { w, h, t, dt, intensity, env, px } = s;
+        if (!sprites) sprites = petalSprite(colors);
+        if (petals.length === 0) this.resize?.(w, h);
+        const count = Math.round(petals.length * intensity * env.quality);
+        for (let i = 0; i < count; i++) {
+          const p = petals[i];
+          if (!env.still) {
+            p.y += p.sp * dt;
+            p.rot += p.vr * dt;
+          }
+          const x = p.x + Math.sin(p.ph + t * 0.6) * p.sw + drift * t * 4 + px * 12;
+          const wrapped = ((x % (w + 40)) + w + 40) % (w + 40) - 20;
+          if (p.y > h + 12) {
+            p.y = -12;
+            p.x = rng() * w;
+          }
+          ctx.save();
+          ctx.translate(wrapped, p.y);
+          ctx.rotate(p.rot);
+          ctx.globalAlpha = 0.5 * intensity;
+          const sp = sprites[p.variant];
+          ctx.drawImage(sp, -p.size / 2, -p.size / 2, p.size, p.size);
+          ctx.restore();
+        }
+        ctx.globalAlpha = 1;
+      },
+    };
+  };
+}
+
+export const leaves = fallingPetals(["#a8663a", "#8a5a2e", "#b4854e"], 1.6);
+export const sakura = fallingPetals(["#e6b7c4", "#d99cae", "#f0cdd6"], 0.9);
+
+/* ------------------------------------------------------------- lightning -- */
+
+export const lightning: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let bolt: { pts: [number, number][]; life: number } | null = null;
+  let next = 6 + rng() * 14;
+
+  return {
+    draw(ctx, s) {
+      const { w, h, dt, intensity, env } = s;
+      if (env.still) return;
+      next -= dt;
+      if (!bolt && next <= 0) {
+        const pts: [number, number][] = [];
+        let x = w * (0.2 + rng() * 0.6);
+        let y = 0;
+        while (y < h * 0.7) {
+          pts.push([x, y]);
+          x += (rng() - 0.5) * 70;
+          y += 20 + rng() * 45;
+        }
+        bolt = { pts, life: 0.35 };
+        next = 7 + rng() * 16;
+      }
+      if (bolt) {
+        bolt.life -= dt;
+        const a = Math.max(0, bolt.life / 0.35);
+        // sky flash
+        ctx.globalAlpha = a * 0.16 * intensity;
+        ctx.fillStyle = "#cdd8ee";
+        ctx.fillRect(0, 0, w, h);
+        // the bolt itself, bright core over soft halo
+        ctx.globalAlpha = a * intensity;
+        for (const [width, color] of [
+          [5, "rgba(160, 190, 255, 0.35)"],
+          [1.6, "#eef3ff"],
+        ] as const) {
+          ctx.strokeStyle = color;
+          ctx.lineWidth = width;
+          ctx.lineJoin = "round";
+          ctx.beginPath();
+          for (let i = 0; i < bolt.pts.length; i++) {
+            const [bx, by] = bolt.pts[i];
+            if (i === 0) ctx.moveTo(bx, by);
+            else ctx.lineTo(bx, by);
+          }
+          ctx.stroke();
+        }
+        if (bolt.life <= 0) bolt = null;
+        ctx.globalAlpha = 1;
+      }
+    },
+  };
+};
+
+/* ----------------------------------------------------------------- waves -- */
+
+export const waves: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  const phases = Array.from({ length: 3 }, () => rng() * TAU);
+
+  return {
+    draw(ctx, s) {
+      const { w, h, t, intensity, env } = s;
+      const bands = env.quality > 0.7 ? 3 : 2;
+      for (let b = 0; b < bands; b++) {
+        const y0 = h * (0.78 + b * 0.07);
+        ctx.beginPath();
+        ctx.moveTo(-10, h + 10);
+        for (let x = -10; x <= w + 10; x += 14) {
+          const y =
+            y0 +
+            Math.sin(x * 0.008 + t * (0.3 + b * 0.12) + phases[b]) * 9 +
+            Math.sin(x * 0.021 - t * 0.22 + phases[b] * 2) * 5;
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(w + 10, h + 10);
+        ctx.closePath();
+        ctx.globalAlpha = intensity * (0.16 - b * 0.035);
+        ctx.fillStyle = b === 0 ? "#1d4a4f" : b === 1 ? "#153a40" : "#0e2b31";
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    },
+  };
+};
+
+/* ------------------------------------------------------------ light rays -- */
+
+export const lightRays: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  const phases = Array.from({ length: 3 }, () => rng() * TAU);
+  const bake = memoCanvas();
+
+  return {
+    draw(ctx, s) {
+      const { w, h, t, intensity } = s;
+      const ray = bake(`${w}x${h}`, w * 0.4, h, (g, bw, bh) => {
+        const grad = g.createLinearGradient(bw * 0.3, 0, bw * 0.55, bh);
+        grad.addColorStop(0, "rgba(232, 210, 160, 0.10)");
+        grad.addColorStop(1, "transparent");
+        g.fillStyle = grad;
+        g.beginPath();
+        g.moveTo(bw * 0.25, 0);
+        g.lineTo(bw * 0.45, 0);
+        g.lineTo(bw * 0.85, bh);
+        g.lineTo(bw * 0.05, bh);
+        g.closePath();
+        g.fill();
+      });
+      ctx.globalCompositeOperation = "screen";
+      for (let i = 0; i < 3; i++) {
+        const drift = Math.sin(t * 0.04 + phases[i]) * w * 0.04;
+        ctx.globalAlpha = intensity * (0.5 + 0.3 * Math.sin(t * 0.07 + phases[i]));
+        ctx.drawImage(ray, w * (0.1 + i * 0.28) + drift, 0);
+      }
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
+    },
+  };
+};
+
+/* ----------------------------------------------------------------- grain -- */
+
+export const grain: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  let tiles: HTMLCanvasElement[] = [];
+  let frame = 0;
+
+  const makeTiles = () => {
+    tiles = Array.from({ length: 3 }, () => {
+      const c = makeCanvas(192, 192);
+      const g = c.getContext("2d")!;
+      const img = g.createImageData(192, 192);
+      for (let i = 0; i < img.data.length; i += 4) {
+        const v = 128 + (rng() - 0.5) * 255;
+        img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+        img.data[i + 3] = 22;
+      }
+      g.putImageData(img, 0, 0);
+      return c;
+    });
+  };
+
+  return {
+    draw(ctx, s) {
+      const { w, h, intensity, env } = s;
+      if (tiles.length === 0) makeTiles();
+      if (!env.still) frame = (frame + 1) % 3;
+      const tile = tiles[frame];
+      ctx.globalAlpha = intensity;
+      ctx.globalCompositeOperation = "overlay";
+      for (let y = 0; y < h; y += 192) {
+        for (let x = 0; x < w; x += 192) {
+          ctx.drawImage(tile, x, y);
+        }
+      }
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
+    },
+  };
+};
+
+/* ----------------------------------------------------------------- dunes -- */
+
+export const dunes: EffectFactory = (seed) => {
+  const rng = mulberry32(seed);
+  const bake = memoCanvas();
+  const offsets = [rng() * TAU, rng() * TAU];
+
+  return {
+    draw(ctx, s) {
+      const { w, h, intensity, px } = s;
+      const layer = bake(`${w}x${h}`, w + 80, h, (g, bw, bh) => {
+        const rows: [number, string][] = [
+          [0.78, "rgba(24, 18, 26, 0.85)"],
+          [0.86, "rgba(15, 11, 17, 0.95)"],
+        ];
+        rows.forEach(([base, color], i) => {
+          g.beginPath();
+          g.moveTo(0, bh);
+          for (let x = 0; x <= bw; x += 12) {
+            const y =
+              bh * base +
+              Math.sin(x * 0.004 + offsets[i]) * bh * 0.035 +
+              Math.sin(x * 0.011 + offsets[i] * 2) * bh * 0.012;
+            g.lineTo(x, y);
+          }
+          g.lineTo(bw, bh);
+          g.closePath();
+          g.fillStyle = color;
+          g.fill();
+        });
+      });
+      ctx.globalAlpha = intensity;
+      ctx.drawImage(layer, -40 + px * 6, 0);
+      ctx.globalAlpha = 1;
+    },
+  };
+};
+
 /* ---------------------------------------------------------------- export -- */
 
 export const EFFECTS: Record<string, EffectFactory> = {
@@ -1091,4 +1478,13 @@ export const EFFECTS: Record<string, EffectFactory> = {
   branches,
   moon,
   "lamp-glow": lampGlow,
+  aurora,
+  fireflies,
+  leaves,
+  sakura,
+  lightning,
+  waves,
+  "light-rays": lightRays,
+  grain,
+  dunes,
 };

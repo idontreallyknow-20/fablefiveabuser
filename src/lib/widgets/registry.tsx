@@ -140,6 +140,53 @@ export const WIDGETS: Record<WidgetKind, WidgetDef> = {
     default: { w: 3, h: 3 },
     chrome: true,
   },
+  soundpad: {
+    kind: "soundpad",
+    name: "Sounds",
+    component: lazyProps(() =>
+      import("@/components/soundboard/SoundBoard").then((m) => {
+        const CompactBoard = () => <m.SoundBoard compact cols={3} />;
+        return CompactBoard;
+      }),
+    ),
+    min: { w: 2, h: 2 },
+    max: { w: 6, h: 5 },
+    default: { w: 3, h: 3 },
+    chrome: true,
+  },
+  macros: {
+    kind: "macros",
+    name: "Macros",
+    component: lazyProps(() =>
+      import("@/components/reflect/MacroWidgets").then((m) => m.MacroRings),
+    ),
+    min: { w: 3, h: 2 },
+    max: { w: 6, h: 3 },
+    default: { w: 4, h: 2 },
+    chrome: true,
+  },
+  meals: {
+    kind: "meals",
+    name: "Meals",
+    component: lazyProps(() =>
+      import("@/components/reflect/MacroWidgets").then((m) => m.MealLog),
+    ),
+    min: { w: 2, h: 2 },
+    max: { w: 6, h: 6 },
+    default: { w: 3, h: 3 },
+    chrome: true,
+  },
+  skincare: {
+    kind: "skincare",
+    name: "Skincare",
+    component: lazyProps(() =>
+      import("@/components/reflect/SkincareWidget").then((m) => m.SkincareWidget),
+    ),
+    min: { w: 2, h: 2 },
+    max: { w: 5, h: 4 },
+    default: { w: 3, h: 2 },
+    chrome: true,
+  },
   "habit-heatmap": {
     kind: "habit-heatmap",
     name: "Consistency",

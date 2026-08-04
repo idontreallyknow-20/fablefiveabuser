@@ -1,11 +1,27 @@
 "use client";
 
+import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { THEME_LIST, type ThemeId } from "@/lib/themes/registry";
-import { DEFAULT_SETTINGS, useSettings } from "@/lib/settings/store";
+import {
+  DEFAULT_SETTINGS,
+  useSettings,
+  type BackgroundSettings,
+} from "@/lib/settings/store";
 import { Segmented, Toggle } from "@/components/ui/Segmented";
 import { LAYOUT_PRESETS } from "@/lib/settings/layout";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { IconPlus, IconTrash } from "@/components/ui/Icons";
+import { BUILTIN_BACKGROUNDS } from "@/lib/backgrounds/builtins";
+import {
+  BACKGROUNDS_KEY,
+  useBackgrounds,
+  useBackgroundUrl,
+  useDeleteBackground,
+  type UserBackground,
+} from "@/lib/backgrounds/data";
+import { uploadBackground } from "@/lib/backgrounds/upload";
 
 function Slider({
   label,
@@ -46,9 +62,91 @@ function Slider({
   );
 }
 
+const tileClass = (active: boolean) =>
+  `w-full overflow-hidden rounded-xl border text-left transition-colors duration-[var(--dur-base)] ${
+    active ? "border-(--accent)/60" : "border-line hover:border-line-strong"
+  }`;
+
+function formatDuration(s: number) {
+  const m = Math.floor(s / 60);
+  const sec = Math.round(s % 60);
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+function UserBackgroundTile({
+  bg,
+  active,
+  onSelect,
+  onDelete,
+}: {
+  bg: UserBackground;
+  active: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+}) {
+  const { data: url } = useBackgroundUrl(bg.kind === "image" ? bg.path : undefined);
+  return (
+    <div className="group relative">
+      <button onClick={onSelect} aria-pressed={active} className={tileClass(active)}>
+        <div
+          className="relative h-16 w-full overflow-hidden"
+          style={{ backgroundColor: bg.avg_color }}
+        >
+          {bg.kind === "image" && url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="" className="h-full w-full object-cover" />
+          )}
+          {bg.kind === "video" && bg.duration_s != null && (
+            <span className="tnum absolute bottom-1.5 right-2 font-mono text-[11px] text-white/75">
+              {formatDuration(bg.duration_s)}
+            </span>
+          )}
+        </div>
+        <div className="bg-bg1 px-3 py-2.5">
+          <p className={`text-[13px] font-medium ${active ? "text-accent" : "text-ink"}`}>
+            {bg.kind === "video" ? "Video" : "Image"}
+          </p>
+        </div>
+      </button>
+      <button
+        onClick={onDelete}
+        aria-label="Delete background"
+        className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-black/55 text-white/75 opacity-0 transition-opacity duration-[var(--dur-base)] hover:text-white focus-visible:opacity-100 group-hover:opacity-100"
+      >
+        <IconTrash size={14} />
+      </button>
+    </div>
+  );
+}
+
 export default function AppearancePage() {
   const { settings, set } = useSettings();
   const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data: myBackgrounds } = useBackgrounds();
+  const deleteBackground = useDeleteBackground();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const bg = settings.background;
+  const setBg = (patch: Partial<BackgroundSettings>) =>
+    set({ background: { ...bg, ...patch } });
+
+  async function onUploadFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || uploading) return;
+    setUploading(true);
+    try {
+      const row = await uploadBackground(file);
+      qc.invalidateQueries({ queryKey: BACKGROUNDS_KEY });
+      setBg({ id: row.id });
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <div className="space-y-8 pb-8">
@@ -82,6 +180,126 @@ export default function AppearancePage() {
             );
           })}
         </div>
+      </section>
+
+      <section aria-label="Background">
+        <h2 className="eyebrow mb-3">Background</h2>
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+          <button
+            onClick={() => setBg({ id: null })}
+            aria-pressed={bg.id === null}
+            className={tileClass(bg.id === null)}
+          >
+            <div
+              className="h-16 w-full"
+              style={(() => {
+                const t = THEME_LIST.find((th) => th.id === settings.theme) ?? THEME_LIST[0];
+                return {
+                  background: `linear-gradient(to bottom, ${t.sky.top}, ${t.sky.mid} 55%, ${t.sky.horizon})`,
+                };
+              })()}
+              aria-hidden
+            />
+            <div className="bg-bg1 px-3 py-2.5">
+              <p
+                className={`text-[13px] font-medium ${bg.id === null ? "text-accent" : "text-ink"}`}
+              >
+                None
+              </p>
+            </div>
+          </button>
+          {BUILTIN_BACKGROUNDS.map((b) => {
+            const active = bg.id === b.id;
+            return (
+              <button
+                key={b.id}
+                onClick={() => setBg({ id: b.id })}
+                aria-pressed={active}
+                className={tileClass(active)}
+              >
+                <div className="h-16 w-full" style={{ backgroundColor: b.avgColor }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={b.path} alt="" className="h-full w-full object-cover" />
+                </div>
+                <div className="bg-bg1 px-3 py-2.5">
+                  <p className={`text-[13px] font-medium ${active ? "text-accent" : "text-ink"}`}>
+                    {b.name}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+          {(myBackgrounds ?? []).map((row) => (
+            <UserBackgroundTile
+              key={row.id}
+              bg={row}
+              active={bg.id === row.id}
+              onSelect={() => setBg({ id: row.id })}
+              onDelete={() => {
+                if (bg.id === row.id) setBg({ id: null });
+                deleteBackground.mutate({ id: row.id, path: row.path });
+              }}
+            />
+          ))}
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="w-full overflow-hidden rounded-xl border border-dashed border-line text-left transition-colors duration-[var(--dur-base)] hover:border-(--accent)/50 disabled:opacity-60"
+          >
+            <div className="flex h-16 w-full items-center justify-center text-ink-faint">
+              <IconPlus size={18} />
+            </div>
+            <div className="bg-bg1 px-3 py-2.5">
+              <p className="text-[13px] font-medium text-ink">
+                {uploading ? "Uploading" : "Upload"}
+              </p>
+            </div>
+          </button>
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*,video/mp4,video/webm"
+          onChange={onUploadFile}
+          className="hidden"
+          aria-label="Upload background"
+        />
+        {bg.id && (
+          <div className="surface mt-3 p-5">
+            <Slider
+              label="Dim"
+              value={bg.dim}
+              min={0}
+              max={0.8}
+              step={0.05}
+              onChange={(dim) => setBg({ dim })}
+              format={(v) => `${Math.round(v * 100)}%`}
+            />
+            <Slider
+              label="Blur"
+              value={bg.blur}
+              min={0}
+              max={24}
+              step={1}
+              onChange={(blur) => setBg({ blur })}
+              format={(v) => `${v}px`}
+            />
+            <Slider
+              label="Mute color"
+              value={bg.desaturate}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(desaturate) => setBg({ desaturate })}
+              format={(v) => `${Math.round(v * 100)}%`}
+            />
+            <Toggle
+              checked={bg.particles}
+              onChange={(particles) => setBg({ particles })}
+              label="Particles"
+            />
+          </div>
+        )}
       </section>
 
       <section aria-label="Today layout" className="surface p-5">

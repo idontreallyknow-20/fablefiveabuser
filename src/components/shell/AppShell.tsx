@@ -4,11 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { AtmosphereCanvas } from "@/components/atmosphere/AtmosphereCanvas";
+import { BackdropMedia } from "@/components/atmosphere/BackdropMedia";
 import {
   IconAmbient,
   IconCalendar,
   IconProjects,
   IconReflect,
+  IconSound,
   IconSpace,
   IconToday,
   IconTrain,
@@ -18,13 +20,15 @@ import { useProfile } from "@/lib/data/profile";
 import { PinGate } from "@/components/shell/PinGate";
 import { AutoTheme } from "@/components/shell/AutoTheme";
 import { NotificationEngine } from "@/components/shell/NotificationEngine";
+import { OutboxDot } from "@/components/shell/OutboxDot";
 
 const NAV = [
   { href: "/today", label: "Today", icon: IconToday },
   { href: "/projects", label: "Projects", icon: IconProjects },
   { href: "/calendar", label: "Calendar", icon: IconCalendar },
-  { href: "/train", label: "Train", icon: IconTrain },
-  { href: "/reflect", label: "Reflect", icon: IconReflect },
+  { href: "/train", label: "Train", icon: IconTrain, module: "train" },
+  { href: "/reflect", label: "Reflect", icon: IconReflect, module: "reflect" },
+  { href: "/sounds", label: "Sounds", icon: IconSound, module: "sounds" },
   { href: "/space", label: "Space", icon: IconSpace },
 ] as const;
 
@@ -57,18 +61,24 @@ function useIdleAmbient() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: profile } = useProfile();
+  const modules = useSettings((s) => s.settings.modules);
   useIdleAmbient();
 
+  const nav = NAV.filter(
+    (item) => !("module" in item) || modules[item.module as keyof typeof modules],
+  );
   const appName = profile?.app_name || "Orbit";
   const immersive = pathname === "/ambient" || pathname === "/focus" || pathname.startsWith("/display");
 
   if (immersive) {
     return (
       <div className="relative min-h-dvh">
+        <BackdropMedia />
         <AtmosphereCanvas />
         <AutoTheme />
         <NotificationEngine />
         <PinGate />
+        <OutboxDot />
         {children}
       </div>
     );
@@ -76,9 +86,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative min-h-dvh">
+      <BackdropMedia />
       <AtmosphereCanvas />
       <AutoTheme />
       <PinGate />
+      <OutboxDot />
 
       {/* desktop rail */}
       <nav
@@ -92,7 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {appName.slice(0, 1)}
         </Link>
         <div className="flex flex-1 flex-col gap-1.5">
-          {NAV.map(({ href, label, icon: Icon }) => {
+          {nav.map(({ href, label, icon: Icon }) => {
             const active = pathname.startsWith(href);
             return (
               <Link
@@ -127,7 +139,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className="floating fixed inset-x-3 bottom-3 z-40 flex items-center justify-around rounded-2xl px-1 py-1.5 md:hidden"
         style={{ paddingBottom: "max(6px, env(safe-area-inset-bottom))" }}
       >
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {nav.map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href);
           return (
             <Link

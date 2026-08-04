@@ -28,8 +28,39 @@ export interface AmbientSettings {
   showReminder: boolean;
 }
 
+export interface BackgroundSettings {
+  /** user_backgrounds row id, `builtin:*` id, or null for the theme scene */
+  id: string | null;
+  /** darkening 0..0.8 */
+  dim: number;
+  /** blur px 0..24 */
+  blur: number;
+  /** desaturation 0..1 */
+  desaturate: number;
+  /** keep the theme's particle overlays over the backdrop */
+  particles: boolean;
+}
+
+export interface ModuleToggles {
+  train: boolean;
+  reflect: boolean;
+  sounds: boolean;
+  teams: boolean;
+}
+
+export interface NutritionTargets {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
 export interface OrbitSettings {
   theme: ThemeId;
+  background: BackgroundSettings;
+  /** optional app areas; off removes them from nav and the widget sheet */
+  modules: ModuleToggles;
+  nutrition: NutritionTargets;
   motion: MotionLevel;
   /** let the scene step its own quality down on slow machines */
   adaptivePerf: boolean;
@@ -69,6 +100,9 @@ export interface OrbitSettings {
 
 export const DEFAULT_SETTINGS: OrbitSettings = {
   theme: DEFAULT_THEME,
+  background: { id: null, dim: 0.35, blur: 0, desaturate: 0, particles: true },
+  modules: { train: true, reflect: true, sounds: true, teams: true },
+  nutrition: { calories: 2400, protein: 150, carbs: 250, fat: 80 },
   motion: "balanced",
   adaptivePerf: true,
   reducedMotion: false,
@@ -154,6 +188,8 @@ export function normalizeSettings(raw: unknown): OrbitSettings {
     hiddenWidgets?: string[];
   };
   const settings: OrbitSettings = { ...DEFAULT_SETTINGS, ...r };
+  // nested objects deep-fill so fields added later hydrate with defaults
+  settings.background = { ...DEFAULT_SETTINGS.background, ...(r.background ?? {}) };
   if (!settings.todayLayout && r.layoutPreset) {
     settings.todayLayout = migrateLegacyLayout(r.layoutPreset, r.hiddenWidgets ?? []);
   }

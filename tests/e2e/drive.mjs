@@ -125,6 +125,23 @@ try {
     check("grid edit adds a widget", false, "edit layout button not found");
   }
 
+  // ---- soundboard ----
+  await page.goto(`${BASE}/sounds`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  const addPad = page.getByRole("button", { name: "Add pad" });
+  if (await addPad.isVisible().catch(() => false)) {
+    await addPad.click();
+    await page.getByRole("button", { name: "Chime", exact: true }).click();
+    await page.waitForTimeout(700);
+    const padBtn = page.getByRole("button", { name: /Pad Chime/ });
+    const padVisible = await padBtn.isVisible().catch(() => false);
+    if (padVisible) await padBtn.click(); // fire it; audio is mocked-out in headless
+    check("soundboard pad creates and fires", padVisible);
+    await shot("24-sounds");
+  } else {
+    check("soundboard pad creates and fires", false, "add pad not found");
+  }
+
   // ---- calendar ----
   await page.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1000);
@@ -291,6 +308,7 @@ try {
   const themes = [
     "rainy-city", "bedroom", "library", "tokyo", "observatory",
     "forest", "snow", "academia", "ocean", "luxe", "living-sky",
+    "aurora-north", "rooftop-dawn", "desert-night", "sakura",
   ];
   await page.goto(`${BASE}/space/appearance`, { waitUntil: "networkidle" });
   const names = {
@@ -299,6 +317,8 @@ try {
     observatory: "Deep-Space Observatory", forest: "Foggy Forest",
     snow: "Snowy Midnight", academia: "Dark Academia", ocean: "Deep Ocean",
     luxe: "Minimal Black Luxury", "living-sky": "Living Sky",
+    "aurora-north": "Aurora North", "rooftop-dawn": "Rooftop Dawn",
+    "desert-night": "Desert Night", sakura: "Sakura Twilight",
   };
   for (const t of themes) {
     await page.goto(`${BASE}/space/appearance`, { waitUntil: "domcontentloaded" });
@@ -308,7 +328,7 @@ try {
     await page.waitForTimeout(2200);
     await shot(`theme-${t}`);
   }
-  check("all 11 themes render", true);
+  check("all 15 themes render", true);
 
   // ---- responsive sweep (back on flagship theme) ----
   await page.goto(`${BASE}/space/appearance`, { waitUntil: "domcontentloaded" });
