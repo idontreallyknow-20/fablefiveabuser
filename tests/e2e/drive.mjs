@@ -215,6 +215,18 @@ try {
     check("calendar views switch", false, "skipped");
   }
 
+  // ---- weekly review ----
+  await page.goto(`${BASE}/review`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  const reviewHeader = await page
+    .locator("h1")
+    .filter({ hasText: /Clear|overdue/ })
+    .first()
+    .isVisible()
+    .catch(() => false);
+  check("review page renders", reviewHeader);
+  await shot("27-review");
+
   // ---- connections ----
   await page.goto(`${BASE}/space/connections`, { waitUntil: "networkidle" });
   await page.waitForTimeout(800);

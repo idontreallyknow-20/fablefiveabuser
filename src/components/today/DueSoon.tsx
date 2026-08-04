@@ -42,13 +42,23 @@ export function DueSoon() {
     <section aria-label="Due soon" className="surface rounded-2xl p-4">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="eyebrow">Due soon</h2>
-        <Link
-          href="/calendar"
-          aria-label="Open calendar"
-          className="text-ink-faint transition-colors hover:text-ink"
-        >
-          <IconCalendar size={15} />
-        </Link>
+        <span className="flex items-center gap-2.5">
+          {due.some((t) => t.due_date! < today) && (
+            <Link
+              href="/review"
+              className="rounded-md font-mono text-[10px] uppercase tracking-[0.12em] text-[color:var(--danger,#C4574E)] transition-opacity hover:opacity-70"
+            >
+              Review
+            </Link>
+          )}
+          <Link
+            href="/calendar"
+            aria-label="Open calendar"
+            className="text-ink-faint transition-colors hover:text-ink"
+          >
+            <IconCalendar size={15} />
+          </Link>
+        </span>
       </div>
       <ul className="flex flex-col gap-1">
         {due.map((t: Task) => {
