@@ -189,7 +189,7 @@ function Column({
           />
         ))}
         {tasks.length === 0 && (
-          <p className="px-1.5 py-3 text-center text-[12px] text-ink-faint">Nothing here yet</p>
+          <p className="px-1.5 py-3 text-center font-mono text-[12px] text-ink-faint">—</p>
         )}
       </div>
     </section>

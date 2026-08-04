@@ -235,10 +235,7 @@ export default function ProjectsPage() {
   return (
     <div className="mx-auto w-full max-w-4xl">
       <header className="rise mb-8 mt-[3vh] flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow mb-1.5">Projects</p>
-          <h1 className="display text-3xl text-ink">Everything in motion</h1>
-        </div>
+        <h1 className="display text-3xl text-ink">Projects</h1>
         <Button variant="primary" onClick={() => setCreateOpen(true)}>
           <IconPlus size={15} />
           New project
@@ -275,12 +272,10 @@ export default function ProjectsPage() {
 
       <div className="rise" style={{ "--stagger-i": 3 } as React.CSSProperties}>
         {!isLoading && visible.length === 0 ? (
-          <div className="surface flex flex-col items-start gap-3 px-5 py-8">
-            <p className="text-sm text-ink-dim">
-              Nothing here yet. A project can be as small as a weekend idea.
-            </p>
+          <div className="surface flex items-center justify-center px-5 py-10">
             <Button variant="secondary" size="sm" onClick={() => setCreateOpen(true)}>
-              Start one
+              <IconPlus size={14} />
+              Project
             </Button>
           </div>
         ) : (

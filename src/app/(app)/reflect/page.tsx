@@ -9,8 +9,7 @@ export default function ReflectPage() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <header className="rise mb-8 mt-[3vh]">
-        <p className="eyebrow mb-2">Reflect</p>
-        <h1 className="display text-[28px] text-ink">A quiet look at the day</h1>
+        <h1 className="display text-[28px] text-ink">Reflect</h1>
       </header>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,6fr)_minmax(0,6fr)]">
