@@ -125,6 +125,28 @@ try {
     check("grid edit adds a widget", false, "edit layout button not found");
   }
 
+  // ---- command palette + natural-language dates ----
+  await page.keyboard.press("Control+k");
+  await page.waitForTimeout(400);
+  const cmdInput = page.getByLabel("Command", { exact: true });
+  if (await cmdInput.isVisible().catch(() => false)) {
+    await cmdInput.fill("dentist aug 12");
+    await page.waitForTimeout(300);
+    await shot("25-palette");
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(700);
+    // find it again through the palette
+    await page.keyboard.press("Control+k");
+    await page.waitForTimeout(300);
+    await page.getByLabel("Command", { exact: true }).fill("dentist");
+    await page.waitForTimeout(400);
+    const found = await page.getByRole("button", { name: /dentist/ }).first().isVisible().catch(() => false);
+    check("palette adds task with NL date and finds it", found);
+    await page.keyboard.press("Escape");
+  } else {
+    check("palette adds task with NL date and finds it", false, "palette did not open");
+  }
+
   // ---- soundboard ----
   await page.goto(`${BASE}/sounds`, { waitUntil: "networkidle" });
   await page.waitForTimeout(800);
