@@ -7,6 +7,7 @@ import { Priorities } from "@/components/today/Priorities";
 import { PlayerCard } from "@/components/spotify/PlayerCard";
 import { TodayEvents, nextEventOf, useCalendarStatus, useTodayEvents } from "@/components/calendar/TodayEvents";
 import { RoutinesDue } from "@/components/routines/RoutinesDue";
+import { DueSoon } from "@/components/today/DueSoon";
 import { IconAmbient, IconFocus } from "@/components/ui/Icons";
 import { useSettings } from "@/lib/settings/store";
 import { presetById, visibleWidgets } from "@/lib/settings/layout";
@@ -101,8 +102,11 @@ export default function TodayPage() {
                 <TodayEvents />
               </div>
             )}
+            <div className="rise" style={{ "--stagger-i": 4 } as React.CSSProperties}>
+              <DueSoon />
+            </div>
             {sideWidgets.includes("routines") && (
-              <div className="rise" style={{ "--stagger-i": 4 } as React.CSSProperties}>
+              <div className="rise" style={{ "--stagger-i": 5 } as React.CSSProperties}>
                 <RoutinesDue />
               </div>
             )}

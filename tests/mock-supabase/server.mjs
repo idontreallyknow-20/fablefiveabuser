@@ -282,6 +282,14 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   if (req.method === "OPTIONS") return json(res, 204, {});
 
+  // test-only: wipe all state so e2e runs start clean
+  if (url.pathname === "/__reset" && req.method === "POST") {
+    users.clear();
+    sessions.clear();
+    for (const t of TABLES) tables.set(t, []);
+    return json(res, 200, { reset: true });
+  }
+
   // ---- auth ----
   if (url.pathname === "/auth/v1/signup" && req.method === "POST") {
     const body = await readBody(req);

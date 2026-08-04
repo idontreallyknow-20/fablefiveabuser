@@ -748,6 +748,7 @@ export type Database = {
       }
       tasks: {
         Row: {
+          checklist: Json
           completed_at: string | null
           created_at: string
           custom: Json
@@ -765,13 +766,16 @@ export type Database = {
           project_id: string | null
           scheduled_at: string | null
           scheduled_end_at: string | null
+          recurrence: Json | null
           sort_order: number
           status: string
+          tags: string[]
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          checklist?: Json
           completed_at?: string | null
           created_at?: string
           custom?: Json
@@ -789,13 +793,16 @@ export type Database = {
           project_id?: string | null
           scheduled_at?: string | null
           scheduled_end_at?: string | null
+          recurrence?: Json | null
           sort_order?: number
           status?: string
+          tags?: string[]
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          checklist?: Json
           completed_at?: string | null
           created_at?: string
           custom?: Json
@@ -813,8 +820,10 @@ export type Database = {
           project_id?: string | null
           scheduled_at?: string | null
           scheduled_end_at?: string | null
+          recurrence?: Json | null
           sort_order?: number
           status?: string
+          tags?: string[]
           title?: string
           updated_at?: string
           user_id?: string

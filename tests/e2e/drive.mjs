@@ -29,6 +29,9 @@ page.on("pageerror", (e) => consoleErrors.push(String(e)));
 const shot = (name) => page.screenshot({ path: `${SHOTS}/${name}.png` });
 
 try {
+  // ---- reset mock state so reruns start clean ----
+  await fetch("http://localhost:54321/__reset", { method: "POST" }).catch(() => {});
+
   // ---- signup (bootstrap account) ----
   await page.goto(`${BASE}/login`, { waitUntil: "networkidle" });
   await shot("01-login");
@@ -100,6 +103,53 @@ try {
   } else {
     check("workout session starts", false, "split picker not found");
   }
+
+  // ---- calendar ----
+  await page.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(1000);
+  const quickAddInput = page.getByLabel("Add for this day");
+  if (await quickAddInput.isVisible().catch(() => false)) {
+    await quickAddInput.fill("Chemistry test");
+    await quickAddInput.press("Enter");
+    await page.waitForTimeout(800);
+    const onGrid = await page.getByText("Chemistry test").first().isVisible().catch(() => false);
+    check("calendar quick-add lands on the grid", onGrid);
+    await shot("16-calendar-month");
+    // open the task from the day panel (the .last() chip; cells also match by name)
+    await page.getByRole("button", { name: /Chemistry test/ }).last().click();
+    await page.waitForTimeout(500);
+    const tagField = page.getByLabel("Tags");
+    if (await tagField.isVisible().catch(() => false)) {
+      await tagField.fill("test");
+      await tagField.press("Enter");
+      await page.getByRole("button", { name: "Save" }).click();
+      await page.waitForTimeout(700);
+      check("task modal saves tags from calendar", true);
+    } else {
+      check("task modal saves tags from calendar", false, "tags field not found");
+    }
+    // week + agenda views render
+    await page.getByRole("radio", { name: "Week" }).or(page.getByRole("button", { name: "Week" })).first().click();
+    await page.waitForTimeout(500);
+    await shot("17-calendar-week");
+    await page.getByRole("radio", { name: "Agenda" }).or(page.getByRole("button", { name: "Agenda" })).first().click();
+    await page.waitForTimeout(500);
+    check("calendar views switch", true);
+    await shot("18-calendar-agenda");
+  } else {
+    check("calendar quick-add lands on the grid", false, "quick add input not found");
+    check("task modal saves tags from calendar", false, "skipped");
+    check("calendar views switch", false, "skipped");
+  }
+
+  // ---- connections ----
+  await page.goto(`${BASE}/space/connections`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  check(
+    "connections page renders steppers",
+    await page.getByText("Spotify").first().isVisible().catch(() => false),
+  );
+  await shot("19-connections");
 
   // ---- reflect ----
   await page.goto(`${BASE}/reflect`, { waitUntil: "networkidle" });

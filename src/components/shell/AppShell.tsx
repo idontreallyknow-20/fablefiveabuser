@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import { AtmosphereCanvas } from "@/components/atmosphere/AtmosphereCanvas";
 import {
   IconAmbient,
+  IconCalendar,
   IconProjects,
   IconReflect,
   IconSpace,
@@ -21,6 +22,7 @@ import { NotificationEngine } from "@/components/shell/NotificationEngine";
 const NAV = [
   { href: "/today", label: "Today", icon: IconToday },
   { href: "/projects", label: "Projects", icon: IconProjects },
+  { href: "/calendar", label: "Calendar", icon: IconCalendar },
   { href: "/train", label: "Train", icon: IconTrain },
   { href: "/reflect", label: "Reflect", icon: IconReflect },
   { href: "/space", label: "Space", icon: IconSpace },
