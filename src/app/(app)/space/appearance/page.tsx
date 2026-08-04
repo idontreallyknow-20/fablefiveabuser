@@ -86,48 +86,15 @@ export default function AppearancePage() {
 
       <section aria-label="Today layout" className="surface p-5">
         <h2 className="eyebrow mb-3">Today layout</h2>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {LAYOUT_PRESETS.map((p) => {
-            const active = settings.layoutPreset === p.id;
-            return (
-              <button
-                key={p.id}
-                onClick={() => set({ layoutPreset: p.id })}
-                aria-pressed={active}
-                className={`rounded-xl border px-3.5 py-3 text-left transition-colors duration-[var(--dur-base)] ${
-                  active ? "border-(--accent)/60 bg-accent-soft" : "border-line hover:border-line-strong"
-                }`}
-              >
-                <p className={`text-[13.5px] font-medium ${active ? "text-accent" : "text-ink"}`}>
-                  {p.name}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-        <div className="mt-4 border-t border-line pt-4">
-          <p className="mb-1 text-[13px] font-medium text-ink-dim">Hide individual widgets</p>
-          {(["priorities", "player", "calendar", "routines"] as const).map((w) => (
-            <Toggle
-              key={w}
-              checked={!settings.hiddenWidgets.includes(w)}
-              onChange={(show) =>
-                set({
-                  hiddenWidgets: show
-                    ? settings.hiddenWidgets.filter((x) => x !== w)
-                    : [...settings.hiddenWidgets, w],
-                })
-              }
-              label={
-                w === "priorities"
-                  ? "Three priorities"
-                  : w === "player"
-                    ? "Music player"
-                    : w === "calendar"
-                      ? "Today's calendar"
-                      : "Reset reminders"
-              }
-            />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {LAYOUT_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => set({ todayLayout: p.build() })}
+              className="rounded-xl border border-line px-3.5 py-3 text-left transition-colors duration-[var(--dur-base)] hover:border-(--accent)/50"
+            >
+              <p className="text-[13.5px] font-medium text-ink">{p.name}</p>
+            </button>
           ))}
         </div>
       </section>

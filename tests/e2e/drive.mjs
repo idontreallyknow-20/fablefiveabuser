@@ -104,6 +104,27 @@ try {
     check("workout session starts", false, "split picker not found");
   }
 
+  // ---- today grid edit mode ----
+  await page.goto(`${BASE}/today`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  const editBtn = page.getByRole("button", { name: "Edit layout" });
+  if (await editBtn.isVisible().catch(() => false)) {
+    await editBtn.click();
+    await page.waitForTimeout(400);
+    await page.getByRole("button", { name: "Widget", exact: true }).click();
+    await page.waitForTimeout(300);
+    await page.getByRole("button", { name: "Timer", exact: true }).click();
+    await page.waitForTimeout(500);
+    await shot("20-grid-edit");
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    await page.waitForTimeout(500);
+    const timerVisible = await page.getByText("Timer").first().isVisible().catch(() => false);
+    check("grid edit adds a widget", timerVisible);
+    await shot("21-grid-with-timer");
+  } else {
+    check("grid edit adds a widget", false, "edit layout button not found");
+  }
+
   // ---- calendar ----
   await page.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1000);

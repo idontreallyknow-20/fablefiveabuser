@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import {
   applySettingsToDocument,
-  DEFAULT_SETTINGS,
+  normalizeSettings,
   useSettings,
   type OrbitSettings,
 } from "@/lib/settings/store";
@@ -43,7 +43,7 @@ export function SettingsSync() {
       const remote = (data?.settings ?? null) as Partial<OrbitSettings> | null;
       if (remote && typeof remote === "object" && "theme" in remote) {
         skipNextSave.current = true;
-        replaceAll({ ...DEFAULT_SETTINGS, ...remote });
+        replaceAll(normalizeSettings(remote));
       }
       markProfileHydrated();
     })();

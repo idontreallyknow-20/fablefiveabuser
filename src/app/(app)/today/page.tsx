@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Clock } from "@/components/today/Clock";
 import { WeatherChip } from "@/components/today/WeatherChip";
-import { Priorities } from "@/components/today/Priorities";
-import { PlayerCard } from "@/components/spotify/PlayerCard";
-import { TodayEvents, nextEventOf, useCalendarStatus, useTodayEvents } from "@/components/calendar/TodayEvents";
-import { RoutinesDue } from "@/components/routines/RoutinesDue";
-import { DueSoon } from "@/components/today/DueSoon";
+import { nextEventOf, useCalendarStatus, useTodayEvents } from "@/components/calendar/TodayEvents";
 import { IconAmbient, IconFocus } from "@/components/ui/Icons";
 import { useSettings } from "@/lib/settings/store";
-import { presetById, visibleWidgets } from "@/lib/settings/layout";
+import { presetById } from "@/lib/settings/layout";
+import { WidgetGrid } from "@/components/grid/WidgetGrid";
+import { EditBar } from "@/components/grid/EditBar";
+import type { TodayLayout } from "@/lib/widgets/types";
 
 function NextEventMeta() {
   const { data: status } = useCalendarStatus();
@@ -35,18 +35,16 @@ function NextEventMeta() {
 }
 
 export default function TodayPage() {
-  const layoutPreset = useSettings((s) => s.settings.layoutPreset);
-  const hiddenWidgets = useSettings((s) => s.settings.hiddenWidgets);
-  const preset = presetById(layoutPreset);
-  const widgets = visibleWidgets(layoutPreset, hiddenWidgets);
-  const sideWidgets = ["player", "calendar", "routines"].filter((w) =>
-    widgets.has(w as "player" | "calendar" | "routines"),
-  );
-  const showPriorities = widgets.has("priorities");
+  const todayLayout = useSettings((s) => s.settings.todayLayout);
+  const set = useSettings((s) => s.set);
+  const [editing, setEditing] = useState(false);
+
+  const layout: TodayLayout = todayLayout ?? presetById("command").build();
+  const onChange = (next: TodayLayout) => set({ todayLayout: next });
 
   return (
     <div className="flex min-h-[calc(100dvh-8rem)] flex-col">
-      <header className="rise mb-10 mt-[4vh] flex flex-wrap items-end justify-between gap-6 md:mt-[6vh]">
+      <header className="rise mb-8 mt-[4vh] flex flex-wrap items-end justify-between gap-6 md:mt-[5vh]">
         <Clock
           size="hero"
           meta={
@@ -58,61 +56,35 @@ export default function TodayPage() {
           }
         />
         <div className="flex items-center gap-2 pb-2">
-          <Link
-            href="/focus"
-            className="flex h-10 items-center gap-2 rounded-xl border border-line bg-bg1/70 px-4 text-sm font-medium text-ink-dim transition-colors duration-[var(--dur-base)] hover:border-line-strong hover:text-ink"
-          >
-            <IconFocus size={16} />
-            Focus
-          </Link>
-          <Link
-            href="/ambient"
-            aria-label="Ambient mode"
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-bg1/70 text-ink-dim transition-colors duration-[var(--dur-base)] hover:border-line-strong hover:text-ink"
-          >
-            <IconAmbient size={16} />
-          </Link>
+          <EditBar
+            editing={editing}
+            layout={layout}
+            onEditing={setEditing}
+            onChange={onChange}
+          />
+          {!editing && (
+            <>
+              <Link
+                href="/focus"
+                className="flex h-10 items-center gap-2 rounded-xl border border-line bg-bg1/70 px-4 text-sm font-medium text-ink-dim transition-colors duration-[var(--dur-base)] hover:border-line-strong hover:text-ink"
+              >
+                <IconFocus size={16} />
+                Focus
+              </Link>
+              <Link
+                href="/ambient"
+                aria-label="Ambient mode"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-bg1/70 text-ink-dim transition-colors duration-[var(--dur-base)] hover:border-line-strong hover:text-ink"
+              >
+                <IconAmbient size={16} />
+              </Link>
+            </>
+          )}
         </div>
       </header>
 
-      <div
-        className={`grid flex-1 grid-cols-1 gap-8 xl:gap-12 ${
-          showPriorities && sideWidgets.length > 0
-            ? preset.prioritiesFirst
-              ? "lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]"
-              : "lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"
-            : "lg:max-w-2xl"
-        }`}
-      >
-        {showPriorities && preset.prioritiesFirst && <Priorities />}
-        {sideWidgets.length > 0 && (
-          <div className="flex flex-col gap-3">
-            {sideWidgets.includes("calendar") && !preset.prioritiesFirst && (
-              <div className="rise" style={{ "--stagger-i": 2 } as React.CSSProperties}>
-                <TodayEvents />
-              </div>
-            )}
-            {sideWidgets.includes("player") && (
-              <div className="rise" style={{ "--stagger-i": 2 } as React.CSSProperties}>
-                <PlayerCard />
-              </div>
-            )}
-            {sideWidgets.includes("calendar") && preset.prioritiesFirst && (
-              <div className="rise" style={{ "--stagger-i": 3 } as React.CSSProperties}>
-                <TodayEvents />
-              </div>
-            )}
-            <div className="rise" style={{ "--stagger-i": 4 } as React.CSSProperties}>
-              <DueSoon />
-            </div>
-            {sideWidgets.includes("routines") && (
-              <div className="rise" style={{ "--stagger-i": 5 } as React.CSSProperties}>
-                <RoutinesDue />
-              </div>
-            )}
-          </div>
-        )}
-        {showPriorities && !preset.prioritiesFirst && <Priorities />}
+      <div className="rise flex-1" style={{ "--stagger-i": 2 } as React.CSSProperties}>
+        <WidgetGrid layout={layout} editing={editing} onChange={onChange} />
       </div>
     </div>
   );

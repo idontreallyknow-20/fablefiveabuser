@@ -3,6 +3,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DEFAULT_THEME, type MotionLevel, type ThemeId } from "@/lib/themes/registry";
+import type { TodayLayout } from "@/lib/widgets/types";
+import { migrateLegacyLayout } from "@/lib/settings/layout";
 
 export interface AutoSchedule {
   enabled: boolean;
@@ -49,9 +51,8 @@ export interface OrbitSettings {
   energyToday: "low" | "medium" | "high" | null;
   /** spotify uri of the playlist offered in focus mode */
   focusPlaylistUri: string | null;
-  /** today layout preset + individually hidden widgets */
-  layoutPreset: "command" | "calm" | "music" | "project" | "calendar" | "mobile";
-  hiddenWidgets: string[];
+  /** free-form Today grid; null renders the default preset */
+  todayLayout: TodayLayout | null;
   /** manual scene overrides; null follows reality */
   weatherOverride: "rain" | "drizzle" | "snow" | "fog" | "clear" | "clouds" | "storm" | null;
   phaseOverride:
@@ -104,8 +105,7 @@ export const DEFAULT_SETTINGS: OrbitSettings = {
   pinLock: { enabled: false, hash: "" },
   energyToday: null,
   focusPlaylistUri: null,
-  layoutPreset: "command",
-  hiddenWidgets: [],
+  todayLayout: null,
   weatherOverride: null,
   phaseOverride: null,
 };
@@ -137,12 +137,28 @@ export const useSettings = create<SettingsState>()(
         const p = persisted as { settings?: Partial<OrbitSettings> } | undefined;
         return {
           ...current,
-          settings: { ...DEFAULT_SETTINGS, ...(p?.settings ?? {}) },
+          settings: normalizeSettings(p?.settings ?? {}),
         };
       },
     },
   ),
 );
+
+/**
+ * Fills defaults and migrates retired shapes (the preset-based Today
+ * layout becomes a starter grid). Used by both persistence layers.
+ */
+export function normalizeSettings(raw: unknown): OrbitSettings {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Partial<OrbitSettings> & {
+    layoutPreset?: string;
+    hiddenWidgets?: string[];
+  };
+  const settings: OrbitSettings = { ...DEFAULT_SETTINGS, ...r };
+  if (!settings.todayLayout && r.layoutPreset) {
+    settings.todayLayout = migrateLegacyLayout(r.layoutPreset, r.hiddenWidgets ?? []);
+  }
+  return settings;
+}
 
 /** Applies settings to the document: theme attribute, CSS variables, cookie. */
 export function applySettingsToDocument(s: OrbitSettings) {
