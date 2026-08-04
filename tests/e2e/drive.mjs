@@ -172,6 +172,76 @@ try {
   );
   await shot("19-connections");
 
+  // ---- team: create, join from a second browser, claim the day ----
+  await page.goto(`${BASE}/space/team`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  await page.getByLabel("Team name").fill("Orbit");
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.waitForTimeout(900);
+  const inviteCode = (await page.locator("code").first().textContent().catch(() => ""))?.trim();
+  check("team created with invite code", Boolean(inviteCode));
+  await shot("22-team-created");
+
+  if (inviteCode) {
+    // second user directly against the mock, then join through the UI
+    await fetch("http://localhost:54321/auth/v1/signup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        email: "katherine@orbit.local",
+        password: "orbit-e2e-password",
+        data: { display_name: "Katherine" },
+      }),
+    });
+    const ctxB = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const pageB = await ctxB.newPage();
+    await pageB.goto(`${BASE}/login`, { waitUntil: "networkidle" });
+    await pageB.getByLabel("Email").fill("katherine@orbit.local");
+    await pageB.getByLabel("Password").fill("orbit-e2e-password");
+    await pageB.getByRole("button", { name: "Sign in", exact: true }).click();
+    await pageB.waitForURL("**/today", { timeout: 20000 }).catch(() => {});
+    await pageB.goto(`${BASE}/space/team`, { waitUntil: "networkidle" });
+    await pageB.getByLabel("Invite code").fill(inviteCode);
+    await pageB.getByRole("button", { name: "Join", exact: true }).click();
+    await pageB.waitForTimeout(900);
+    const joined = await pageB.getByText("Katherine").first().isVisible().catch(() => false);
+    check("second user joins by invite code", joined);
+
+    // Katherine sets and completes a priority
+    await pageB.goto(`${BASE}/today`, { waitUntil: "networkidle" });
+    await pageB.waitForTimeout(800);
+    await pageB.getByLabel("Add a task to the backlog").fill("Finish lab report");
+    await pageB.getByRole("button", { name: "Add", exact: true }).click();
+    await pageB.waitForTimeout(400);
+    await pageB.getByRole("button", { name: "Choose a priority" }).first().click();
+    await pageB.waitForTimeout(500);
+    await pageB.getByRole("button", { name: /Finish lab report/ }).first().click();
+    await pageB.waitForTimeout(500);
+    await pageB.getByLabel(/Complete Finish lab report/).click();
+    await pageB.waitForTimeout(700);
+
+    // Joseph adds the Team widget and claims the aligned day
+    await page.goto(`${BASE}/today`, { waitUntil: "networkidle" });
+    await page.waitForTimeout(800);
+    await page.getByRole("button", { name: "Edit layout" }).click();
+    await page.getByRole("button", { name: "Widget", exact: true }).click();
+    await page.waitForTimeout(300);
+    await page.getByRole("button", { name: "Team", exact: true }).click();
+    await page.waitForTimeout(400);
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    await page.waitForTimeout(900);
+    const claimBtn = page.getByRole("button", { name: "Claim the day" });
+    if (await claimBtn.isVisible().catch(() => false)) {
+      await claimBtn.click();
+      await page.waitForTimeout(900);
+      check("team day claims when aligned", await page.getByText("aligned").first().isVisible().catch(() => false));
+    } else {
+      check("team day claims when aligned", false, "claim button not visible");
+    }
+    await shot("23-team-aligned");
+    await ctxB.close();
+  }
+
   // ---- reflect ----
   await page.goto(`${BASE}/reflect`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1000);

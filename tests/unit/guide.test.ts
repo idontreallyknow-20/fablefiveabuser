@@ -24,6 +24,7 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     depends_on: [],
     custom: {},
     tags: [],
+    team_id: null,
     recurrence: null,
     checklist: [],
     sort_order: 0,

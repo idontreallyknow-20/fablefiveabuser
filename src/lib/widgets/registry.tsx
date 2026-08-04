@@ -24,6 +24,15 @@ const lazyProps = <T extends object>(loader: () => Promise<ComponentType<T>>) =>
   dynamic(loader, { ssr: false }) as unknown as ComponentType<WidgetProps>;
 
 export const WIDGETS: Record<WidgetKind, WidgetDef> = {
+  team: {
+    kind: "team",
+    name: "Team",
+    component: lazyProps(() => import("@/components/team/TeamWidget").then((m) => m.TeamWidget)),
+    min: { w: 2, h: 2 },
+    max: { w: 6, h: 4 },
+    default: { w: 3, h: 3 },
+    chrome: false,
+  },
   priorities: {
     kind: "priorities",
     name: "Priorities",

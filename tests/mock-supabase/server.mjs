@@ -36,6 +36,9 @@ const TABLES = [
   "integration_accounts",
   "integration_secrets",
   "calendar_events",
+  "teams",
+  "team_members",
+  "team_days",
   "calendar_links",
   "notification_prefs",
   "notification_log",
@@ -345,14 +348,115 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, tables.get("profiles").length);
   }
 
+  if (url.pathname.startsWith("/rest/v1/rpc/")) {
+    const fn = url.pathname.slice("/rest/v1/rpc/".length);
+    const user = bearerUser(req);
+    if (!user) return json(res, 401, { message: "not signed in" });
+    const body = await readBody(req);
+    const teams = tables.get("teams");
+    const members = tables.get("team_members");
+    const days = tables.get("team_days");
+    const isMember = (t) => members.some((m) => m.team_id === t && m.user_id === user.id);
+
+    if (fn === "create_team") {
+      const team = {
+        id: crypto.randomUUID(),
+        name: body.team_name ?? "",
+        accent: "",
+        invite_code: Math.random().toString(36).slice(2, 10),
+        created_by: user.id,
+        created_at: nowIso(),
+      };
+      teams.push(team);
+      members.push({
+        team_id: team.id, user_id: user.id, role: "owner",
+        display_name: body.member_name ?? "", joined_at: nowIso(),
+      });
+      return json(res, 200, team);
+    }
+    if (fn === "join_team") {
+      const team = teams.find((t) => t.invite_code === body.code);
+      if (!team) return json(res, 400, { message: "invalid code" });
+      if (!members.some((m) => m.team_id === team.id && m.user_id === user.id)) {
+        members.push({
+          team_id: team.id, user_id: user.id, role: "member",
+          display_name: body.member_name ?? "", joined_at: nowIso(),
+        });
+      }
+      return json(res, 200, team);
+    }
+    if (fn === "team_today") {
+      if (!isMember(body.t)) return json(res, 400, { message: "not a member" });
+      const out = members
+        .filter((m) => m.team_id === body.t)
+        .map((m) => {
+          const pri = tables.get("tasks").filter(
+            (k) => k.user_id === m.user_id && k.priority_date === body.d && k.priority_slot != null,
+          );
+          return {
+            user_id: m.user_id,
+            display_name: m.display_name,
+            priorities_total: pri.length,
+            priorities_done: pri.filter((k) => k.completed_at).length,
+          };
+        });
+      return json(res, 200, out);
+    }
+    if (fn === "team_streak") {
+      if (!isMember(body.t)) return json(res, 400, { message: "not a member" });
+      const dates = new Set(days.filter((x) => x.team_id === body.t && x.bonus_at).map((x) => x.date));
+      let streak = 0;
+      const cursor = new Date();
+      if (!dates.has(cursor.toISOString().slice(0, 10))) cursor.setDate(cursor.getDate() - 1);
+      while (dates.has(cursor.toISOString().slice(0, 10))) {
+        streak += 1;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+      return json(res, 200, streak);
+    }
+    if (fn === "claim_team_day") {
+      if (!isMember(body.t)) return json(res, 400, { message: "not a member" });
+      const summary = members
+        .filter((m) => m.team_id === body.t)
+        .map((m) => {
+          const pri = tables.get("tasks").filter(
+            (k) => k.user_id === m.user_id && k.priority_date === body.d && k.priority_slot != null,
+          );
+          return { total: pri.length, done: pri.filter((k) => k.completed_at).length };
+        });
+      if (summary.some((s) => s.total === 0 || s.done < s.total)) {
+        return json(res, 400, { message: "not aligned yet" });
+      }
+      let row = days.find((x) => x.team_id === body.t && x.date === body.d);
+      if (!row) {
+        row = { team_id: body.t, date: body.d, bonus_at: nowIso() };
+        days.push(row);
+      } else if (!row.bonus_at) {
+        row.bonus_at = nowIso();
+      }
+      return json(res, 200, row);
+    }
+    return json(res, 404, { message: `rpc ${fn} not implemented in mock` });
+  }
+
   // ---- rest ----
   const restMatch = url.pathname.match(/^\/rest\/v1\/(\w+)$/);
   if (restMatch) {
     const tableName = restMatch[1];
     if (!tables.has(tableName)) return json(res, 404, { message: `table ${tableName} not found` });
     const user = bearerUser(req);
-    // emulate RLS: only rows owned by the caller
-    const owns = (r) => user && (r.user_id === user.id || r.id === user.id && tableName === "profiles");
+    // emulate RLS: own rows, plus team visibility where policies allow it
+    const myTeams = user
+      ? new Set(tables.get("team_members").filter((m) => m.user_id === user.id).map((m) => m.team_id))
+      : new Set();
+    const owns = (r) => {
+      if (!user) return false;
+      if (tableName === "profiles") return r.id === user.id;
+      if (tableName === "teams") return myTeams.has(r.id);
+      if (tableName === "team_members" || tableName === "team_days") return myTeams.has(r.team_id);
+      if (tableName === "tasks") return r.user_id === user.id || (r.team_id && myTeams.has(r.team_id));
+      return r.user_id === user.id;
+    };
     const rows = tables.get(tableName);
     const single = (req.headers.accept ?? "").includes("vnd.pgrst.object");
 

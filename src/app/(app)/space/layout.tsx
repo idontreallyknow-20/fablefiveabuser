@@ -7,6 +7,7 @@ const SECTIONS = [
   { href: "/space/appearance", label: "Appearance" },
   { href: "/space/displays", label: "Displays" },
   { href: "/space/connections", label: "Connections" },
+  { href: "/space/team", label: "Team" },
   { href: "/space/notifications", label: "Notifications" },
   { href: "/space/routines", label: "Routines" },
   { href: "/space/guide", label: "Guide" },
