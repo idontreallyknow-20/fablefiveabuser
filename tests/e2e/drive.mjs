@@ -262,7 +262,13 @@ try {
   await page.getByLabel("Team name").fill("Orbit");
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await page.waitForTimeout(900);
-  const inviteCode = (await page.locator("code").first().textContent().catch(() => ""))?.trim();
+  const inviteCode = (
+    await page
+      .getByTitle("Copy")
+      .first()
+      .textContent()
+      .catch(async () => (await page.locator("code").first().textContent().catch(() => "")) ?? "")
+  )?.trim();
   check("team created with invite code", Boolean(inviteCode));
   await shot("22-team-created");
 
