@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/db/types";
-import { todayISO } from "@/lib/data/tasks";
+import { todayISO, type Task } from "@/lib/data/tasks";
 
 export type Team = Tables<"teams">;
 export type TeamMember = Tables<"team_members">;
@@ -85,6 +85,42 @@ export function useTeamDay(teamId: string | undefined) {
   });
 }
 
+/** every task shared with the team, across members; realtime + poll fallback */
+export function useTeamTasks(teamId: string | undefined) {
+  return useQuery({
+    queryKey: ["tasks", "team", teamId],
+    queryFn: async (): Promise<Task[]> => {
+      const supabase = supabaseBrowser();
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("team_id", teamId!)
+        .order("created_at");
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: Boolean(teamId),
+    refetchInterval: 15_000,
+  });
+}
+
+export function useSaveTeamNotes() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ teamId, notes }: { teamId: string; notes: string }) => {
+      const supabase = supabaseBrowser();
+      const { error } = await supabase.from("teams").update({ notes }).eq("id", teamId);
+      if (error) throw error;
+      return notes;
+    },
+    onSuccess: (notes) => {
+      qc.setQueryData<{ team: Team; members: TeamMember[] } | null>(["team"], (prev) =>
+        prev ? { ...prev, team: { ...prev.team, notes } } : prev,
+      );
+    },
+  });
+}
+
 /** realtime: refresh team state when members or bonus days change */
 export function useTeamRealtime(teamId: string | undefined) {
   const qc = useQueryClient();
@@ -102,6 +138,16 @@ export function useTeamRealtime(teamId: string | undefined) {
         "postgres_changes",
         { event: "*", schema: "public", table: "team_members", filter: `team_id=eq.${teamId}` },
         () => qc.invalidateQueries({ queryKey: ["team"] }),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "teams", filter: `id=eq.${teamId}` },
+        () => qc.invalidateQueries({ queryKey: ["team"] }),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks", filter: `team_id=eq.${teamId}` },
+        () => qc.invalidateQueries({ queryKey: ["tasks"] }),
       )
       .subscribe();
     return () => {

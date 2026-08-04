@@ -251,7 +251,8 @@ try {
   await page.waitForTimeout(800);
   check(
     "connections page renders steppers",
-    await page.getByText("Spotify").first().isVisible().catch(() => false),
+    (await page.getByText("Spotify").first().isVisible().catch(() => false)) &&
+      (await page.getByLabel("Discord").first().isVisible().catch(() => false)),
   );
   await shot("19-connections");
 

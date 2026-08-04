@@ -10,6 +10,8 @@ import {
   type Task,
 } from "@/lib/data/tasks";
 import { useRoutines } from "@/lib/data/routines";
+import { useProjects } from "@/lib/data/projects";
+import { colorForTag, withAlpha } from "@/lib/colors";
 import {
   useCalendarStatus,
   type OrbitEvent,
@@ -72,10 +74,14 @@ function ItemChip({
   item,
   onOpen,
   draggable,
+  dotColor,
+  showTags = false,
 }: {
   item: CalendarItem;
   onOpen: () => void;
   draggable: boolean;
+  dotColor?: string | null;
+  showTags?: boolean;
 }) {
   const tone =
     item.kind === "event"
@@ -98,7 +104,28 @@ function ItemChip({
       }`}
     >
       {item.time && <span className="tnum shrink-0 font-mono text-[10.5px] text-ink-faint">{item.time}</span>}
+      {item.kind === "task" && dotColor && (
+        <span
+          aria-hidden
+          className="h-[6px] w-[6px] shrink-0 rounded-full"
+          style={{ backgroundColor: withAlpha(dotColor, 0.8) }}
+        />
+      )}
       <span className="truncate">{item.title}</span>
+      {showTags &&
+        item.tags.slice(0, 2).map((t) => (
+          <span
+            key={t}
+            className="shrink-0 rounded-full border px-1.5 font-mono text-[10px]"
+            style={{
+              borderColor: withAlpha(colorForTag(t), 0.4),
+              backgroundColor: withAlpha(colorForTag(t), 0.1),
+              color: withAlpha(colorForTag(t), 0.9),
+            }}
+          >
+            {t}
+          </span>
+        ))}
     </button>
   );
 }
@@ -114,6 +141,7 @@ export default function CalendarPage() {
 
   const { data: tasks = [] } = useTasks();
   const { data: routines = [] } = useRoutines();
+  const { data: projects = [] } = useProjects(true);
   const { data: calStatus } = useCalendarStatus();
   const { data: eventsData } = useMonthEvents(Boolean(calStatus?.connected));
   const update = useUpdateTask();
@@ -151,6 +179,16 @@ export default function CalendarPage() {
 
   const taskById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
   const anchorMonth = parseISO(anchor).getMonth();
+
+  const dotFor = useMemo(() => {
+    const colorByProject = new Map<string, string>();
+    for (const p of projects) if (p.color) colorByProject.set(p.id, p.color);
+    return (item: CalendarItem): string | null => {
+      if (item.kind !== "task") return null;
+      const pid = taskById.get(item.sourceId)?.project_id;
+      return pid ? (colorByProject.get(pid) ?? null) : null;
+    };
+  }, [projects, taskById]);
 
   const step = (dir: 1 | -1) => {
     if (view === "month") {
@@ -268,6 +306,7 @@ export default function CalendarPage() {
                         item={item}
                         onOpen={() => openItem(item)}
                         draggable={item.kind === "task" && !item.ghost}
+                        dotColor={dotFor(item)}
                       />
                     ))}
                     {items.length > 3 && (
@@ -310,6 +349,7 @@ export default function CalendarPage() {
                       item={item}
                       onOpen={() => openItem(item)}
                       draggable={item.kind === "task" && !item.ghost}
+                      dotColor={dotFor(item)}
                     />
                   ))}
                 </div>
@@ -339,6 +379,8 @@ export default function CalendarPage() {
                       item={item}
                       onOpen={() => openItem(item)}
                       draggable={false}
+                      dotColor={dotFor(item)}
+                      showTags
                     />
                   ))}
                 </div>
@@ -361,7 +403,14 @@ export default function CalendarPage() {
           </div>
           <div className="flex flex-col gap-1">
             {selectedItems.map((item) => (
-              <ItemChip key={item.id} item={item} onOpen={() => openItem(item)} draggable={false} />
+              <ItemChip
+                key={item.id}
+                item={item}
+                onOpen={() => openItem(item)}
+                draggable={false}
+                dotColor={dotFor(item)}
+                showTags
+              />
             ))}
           </div>
           <div className="mt-3 flex items-center gap-2">

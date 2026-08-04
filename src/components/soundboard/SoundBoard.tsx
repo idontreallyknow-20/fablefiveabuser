@@ -13,6 +13,7 @@ import {
 import { parseSynthParams, playSynth, SYNTH_PRESETS } from "@/lib/sound/synth";
 import { loadSample, playSample, uploadSample } from "@/lib/sound/samples";
 import type { Voice } from "@/lib/sound/engine";
+import { LofiPad } from "@/components/soundboard/LofiPad";
 import { IconPlus } from "@/components/ui/Icons";
 import { useToast } from "@/components/ui/Toast";
 
@@ -204,6 +205,7 @@ export function SoundBoard({
         className="grid min-h-0 flex-1 content-start gap-2 overflow-y-auto"
         style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
       >
+        {!compact && <LofiPad />}
         {pads.map((pad, i) => (
           <Pad
             key={pad.id}

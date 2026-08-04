@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { IconPlus } from "@/components/ui/Icons";
 import { isDoneStatus, statusPatch, taskCustom } from "@/components/projects/task-utils";
 import { ChecklistBadge } from "@/components/projects/TaskEditModal";
+import { withAlpha } from "@/lib/colors";
 
 function ChevronLeft() {
   return (
@@ -28,12 +29,14 @@ function BoardCard({
   task,
   statuses,
   product,
+  projectColor,
   onEdit,
   onMove,
 }: {
   task: Task;
   statuses: string[];
   product: boolean;
+  projectColor: string | null;
   onEdit: (task: Task) => void;
   onMove: (taskId: string, status: string) => void;
 }) {
@@ -63,6 +66,13 @@ function BoardCard({
         onClick={() => onEdit(task)}
         className="block w-full text-left text-sm leading-snug text-ink transition-colors hover:text-accent"
       >
+        {projectColor && (
+          <span
+            aria-hidden
+            className="mb-px mr-1.5 inline-block h-[7px] w-[7px] rounded-full"
+            style={{ backgroundColor: withAlpha(projectColor, 0.8) }}
+          />
+        )}
         {task.title}
       </button>
 
@@ -107,6 +117,7 @@ function Column({
   tasks,
   statuses,
   product,
+  projectColor,
   onEdit,
   onMove,
   onAdd,
@@ -116,6 +127,7 @@ function Column({
   tasks: Task[];
   statuses: string[];
   product: boolean;
+  projectColor: string | null;
   onEdit: (task: Task) => void;
   onMove: (taskId: string, status: string) => void;
   onAdd: (title: string, status: string) => Promise<void>;
@@ -184,6 +196,7 @@ function Column({
             task={t}
             statuses={statuses}
             product={product}
+            projectColor={projectColor}
             onEdit={onEdit}
             onMove={onMove}
           />
@@ -243,6 +256,7 @@ export function TaskBoard({
           tasks={byStatus.get(s) ?? []}
           statuses={statuses}
           product={product}
+          projectColor={project.color}
           onEdit={onEdit}
           onMove={move}
           onAdd={add}

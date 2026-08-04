@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { GoogleCard } from "@/components/connections/GoogleCard";
 import { SpotifyCard } from "@/components/connections/SpotifyCard";
+import { DiscordCard } from "@/components/connections/DiscordCard";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
@@ -48,6 +49,28 @@ function LocationSection() {
         </div>
         <Button type="submit" variant="secondary" loading={searching}>
           Search
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            navigator.geolocation?.getCurrentPosition(
+              (pos) => {
+                set({
+                  location: {
+                    name: "Here",
+                    lat: Math.round(pos.coords.latitude * 1000) / 1000,
+                    lon: Math.round(pos.coords.longitude * 1000) / 1000,
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                  },
+                });
+                toast("Location updated", "success");
+              },
+              () => toast("Location unavailable", "error"),
+            );
+          }}
+        >
+          Locate
         </Button>
       </form>
       {results.length > 0 && (
@@ -99,6 +122,7 @@ function ConnectionsInner() {
       )}
       <SpotifyCard error={spotifyError} />
       <GoogleCard error={googleError} />
+      <DiscordCard />
       <LocationSection />
     </div>
   );

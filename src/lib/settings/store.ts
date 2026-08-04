@@ -65,6 +65,11 @@ export interface NutritionTargets {
   fat: number;
 }
 
+export interface IntegrationSettings {
+  /** discord webhook url; posts go straight from the client */
+  discordWebhook: string;
+}
+
 export interface OrbitSettings {
   theme: ThemeId;
   background: BackgroundSettings;
@@ -72,6 +77,7 @@ export interface OrbitSettings {
   /** optional app areas; off removes them from nav and the widget sheet */
   modules: ModuleToggles;
   nutrition: NutritionTargets;
+  integrations: IntegrationSettings;
   motion: MotionLevel;
   /** let the scene step its own quality down on slow machines */
   adaptivePerf: boolean;
@@ -122,6 +128,7 @@ export const DEFAULT_SETTINGS: OrbitSettings = {
   },
   modules: { train: true, reflect: true, sounds: true, teams: true },
   nutrition: { calories: 2400, protein: 150, carbs: 250, fat: 80 },
+  integrations: { discordWebhook: "" },
   motion: "balanced",
   adaptivePerf: true,
   reducedMotion: false,
@@ -218,6 +225,7 @@ export function normalizeSettings(raw: unknown): OrbitSettings {
   // nested objects deep-fill so fields added later hydrate with defaults
   settings.background = { ...DEFAULT_SETTINGS.background, ...(r.background ?? {}) };
   settings.ui = { ...DEFAULT_SETTINGS.ui, ...(r.ui ?? {}) };
+  settings.integrations = { ...DEFAULT_SETTINGS.integrations, ...(r.integrations ?? {}) };
   if (![0.9, 1, 1.1].includes(settings.ui.fontScale)) settings.ui.fontScale = 1;
   if (!settings.todayLayout && r.layoutPreset) {
     settings.todayLayout = migrateLegacyLayout(r.layoutPreset, r.hiddenWidgets ?? []);

@@ -1001,6 +1001,7 @@ export type Database = {
           id: string
           invite_code: string
           name: string
+          notes: string
         }
         Insert: {
           accent?: string
@@ -1009,6 +1010,7 @@ export type Database = {
           id?: string
           invite_code?: string
           name?: string
+          notes?: string
         }
         Update: {
           accent?: string
@@ -1017,6 +1019,7 @@ export type Database = {
           id?: string
           invite_code?: string
           name?: string
+          notes?: string
         }
         Relationships: []
       }

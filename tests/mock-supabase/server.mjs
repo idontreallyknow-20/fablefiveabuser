@@ -366,6 +366,7 @@ const server = http.createServer(async (req, res) => {
         id: crypto.randomUUID(),
         name: body.team_name ?? "",
         accent: "",
+        notes: "",
         invite_code: Math.random().toString(36).slice(2, 10),
         created_by: user.id,
         created_at: nowIso(),
@@ -547,6 +548,8 @@ function defaultsFor(tableName) {
       return { slug: null, category: "reset", schedule: { times: [], days: [0, 1, 2, 3, 4, 5, 6] }, enabled: true, sort_order: 0 };
     case "routine_logs":
       return { status: "done", at: nowIso() };
+    case "teams":
+      return { name: "", accent: "", notes: "", invite_code: Math.random().toString(36).slice(2, 10) };
     case "displays":
       return { name: "Display", role: "command", theme: null, variant: null, motion: "balanced", brightness: 1, density: "comfortable", ambient: {}, layout: {}, last_seen_at: null };
     default:

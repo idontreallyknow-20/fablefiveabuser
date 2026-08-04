@@ -17,6 +17,7 @@ import {
 } from "@/components/projects/task-utils";
 import { parseRecurrence, type Recurrence } from "@/lib/calendar/recurrence";
 import { useTeam } from "@/lib/data/teams";
+import { colorForTag, withAlpha } from "@/lib/colors";
 
 export interface ChecklistItem {
   id: string;
@@ -484,7 +485,12 @@ function TaskEditForm({
                 {tags.map((t) => (
                   <span
                     key={t}
-                    className="inline-flex items-center gap-1 rounded-full border border-line bg-bg1 py-0.5 pl-2.5 pr-1 font-mono text-[11.5px] text-ink-dim"
+                    className="inline-flex items-center gap-1 rounded-full border py-0.5 pl-2.5 pr-1 font-mono text-[11.5px]"
+                    style={{
+                      borderColor: withAlpha(colorForTag(t), 0.4),
+                      backgroundColor: withAlpha(colorForTag(t), 0.1),
+                      color: withAlpha(colorForTag(t), 0.9),
+                    }}
                   >
                     {t}
                     <button
