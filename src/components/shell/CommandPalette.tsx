@@ -26,6 +26,7 @@ const PAGES: { label: string; href: string }[] = [
   { label: "Today", href: "/today" },
   { label: "Projects", href: "/projects" },
   { label: "Calendar", href: "/calendar" },
+  { label: "Insights", href: "/insights" },
   { label: "Music", href: "/music" },
   { label: "Train", href: "/train" },
   { label: "Reflect", href: "/reflect" },

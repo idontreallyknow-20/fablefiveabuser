@@ -198,6 +198,50 @@ export const WIDGETS: Record<WidgetKind, WidgetDef> = {
     default: { w: 3, h: 3 },
     chrome: true,
   },
+  momentum: {
+    kind: "momentum",
+    name: "Momentum",
+    component: lazyProps(() =>
+      import("@/components/insights/InsightWidgets").then((m) => m.MomentumWidget),
+    ),
+    min: { w: 3, h: 2 },
+    max: { w: 6, h: 3 },
+    default: { w: 4, h: 2 },
+    chrome: true,
+  },
+  "week-shape": {
+    kind: "week-shape",
+    name: "Week shape",
+    component: lazyProps(() =>
+      import("@/components/insights/InsightWidgets").then((m) => m.WeekShapeWidget),
+    ),
+    min: { w: 3, h: 2 },
+    max: { w: 6, h: 3 },
+    default: { w: 3, h: 2 },
+    chrome: true,
+  },
+  balance: {
+    kind: "balance",
+    name: "Balance",
+    component: lazyProps(() =>
+      import("@/components/insights/InsightWidgets").then((m) => m.BalanceWidget),
+    ),
+    min: { w: 3, h: 2 },
+    max: { w: 6, h: 3 },
+    default: { w: 4, h: 3 },
+    chrome: true,
+  },
+  training: {
+    kind: "training",
+    name: "Training",
+    component: lazyProps(() =>
+      import("@/components/insights/InsightWidgets").then((m) => m.TrainingWidget),
+    ),
+    min: { w: 3, h: 2 },
+    max: { w: 6, h: 3 },
+    default: { w: 4, h: 2 },
+    chrome: true,
+  },
 };
 
 export const WIDGET_LIST = Object.values(WIDGETS);

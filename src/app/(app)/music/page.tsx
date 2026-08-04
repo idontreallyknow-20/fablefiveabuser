@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { LyricsPane } from "@/components/spotify/LyricsPane";
 import { PlayerControls } from "@/components/spotify/PlayerControls";
 import { WebPlayer } from "@/components/spotify/WebPlayer";
 import { IconPlay, IconSpotify, IconVolume } from "@/components/ui/Icons";
@@ -17,6 +18,11 @@ interface RecentItem {
   albumArt: string | null;
   uri: string;
   playedAt: string | null;
+}
+
+interface LyricsPayload {
+  synced: { t: number; line: string }[] | null;
+  plain: string | null;
 }
 
 interface PlaylistItem {
@@ -100,6 +106,23 @@ export default function MusicPage() {
     return () => clearInterval(id);
   }, [playback.isPlaying, reducedMotion]);
 
+  // lyrics: fetched only while the lyrics view is open, cached per track
+  const [lyricsOn, setLyricsOn] = useState(false);
+  const primaryArtist = track?.artists.split(",")[0]?.trim() ?? "";
+  const { data: lyrics, isLoading: lyricsLoading } = useQuery({
+    queryKey: ["lyrics", primaryArtist, track?.name ?? ""],
+    queryFn: async (): Promise<LyricsPayload> => {
+      const params = new URLSearchParams({ artist: primaryArtist, title: track?.name ?? "" });
+      if (track?.durationMs) params.set("durationS", String(Math.round(track.durationMs / 1000)));
+      const res = await fetch(`/api/lyrics?${params.toString()}`);
+      if (!res.ok) return { synced: null, plain: null };
+      return res.json();
+    },
+    enabled: lyricsOn && Boolean(track),
+    staleTime: Infinity,
+    retry: false,
+  });
+
   const playUri = async (uri: string) => {
     const res = await fetch("/api/spotify/control", {
       method: "POST",
@@ -136,12 +159,67 @@ export default function MusicPage() {
 
   const heroName = track?.name ?? lastPlayed?.name ?? null;
   const heroArtists = track?.artists ?? lastPlayed?.artists ?? null;
+  const showLyrics = lyricsOn && Boolean(track);
 
   return (
     <div className="fade flex min-h-[calc(100dvh-7.5rem)] flex-col gap-12 lg:flex-row lg:items-stretch lg:gap-16">
       <WebPlayer />
 
+      {/* lyrics stage: artwork steps aside, the words take over */}
+      {showLyrics && track && (
+        <section
+          aria-label="Lyrics"
+          className="flex min-h-0 flex-1 flex-col items-center gap-8 py-6 lg:flex-row lg:gap-14"
+        >
+          <div className="flex shrink-0 flex-col items-center gap-5 text-center lg:w-[280px] lg:items-start lg:text-left">
+            <div className="relative shrink-0">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[185%] w-[185%] -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-[var(--dur-scene)]"
+                style={{
+                  background: glow
+                    ? `radial-gradient(circle, ${glow} 0%, color-mix(in srgb, ${glow} 45%, transparent) 42%, transparent 72%)`
+                    : undefined,
+                  filter: "blur(48px)",
+                  opacity: glow ? 0.85 : 0,
+                }}
+              />
+              {art && (
+                // eslint-disable-next-line @next/next/no-img-element -- Spotify CDN artwork must be hotlinked per their terms
+                <img
+                  src={art}
+                  alt=""
+                  className="relative aspect-square w-[120px] rounded-[16px] border border-line object-cover lg:w-[160px]"
+                />
+              )}
+            </div>
+            <div>
+              <p className="eyebrow mb-2">{playback.isPlaying ? "Now playing" : "Paused"}</p>
+              <p className="text-[15px] font-medium text-ink">{track.name}</p>
+              <p className="mt-1 text-[13px] text-ink-faint">{track.artists}</p>
+            </div>
+            <PlayerControls playback={playback} compact />
+            <button
+              aria-pressed="true"
+              onClick={() => setLyricsOn(false)}
+              className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink transition-colors duration-[var(--dur-base)] hover:text-ink-dim"
+            >
+              Lyrics
+            </button>
+          </div>
+          <LyricsPane
+            synced={lyrics?.synced ?? null}
+            plain={lyrics?.plain ?? null}
+            loading={lyricsLoading}
+            progressS={progressMs / 1000}
+            reducedMotion={reducedMotion}
+          />
+        </section>
+      )}
+
       {/* hero: artwork + type + light */}
+      {!showLyrics && (
+        <>
       <section
         aria-label="Now playing"
         className="flex flex-1 flex-col items-center justify-center gap-9 py-6 text-center lg:items-start lg:text-left"
@@ -220,6 +298,15 @@ export default function MusicPage() {
 
           <div className="mt-6 flex flex-col items-center gap-5 lg:items-start">
             <PlayerControls playback={playback} />
+            {track && (
+              <button
+                aria-pressed="false"
+                onClick={() => setLyricsOn(true)}
+                className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint transition-colors duration-[var(--dur-base)] hover:text-ink-dim"
+              >
+                Lyrics
+              </button>
+            )}
             {playback.volume !== null && (
               <label className="flex w-full max-w-[260px] items-center gap-3">
                 <IconVolume size={15} className="shrink-0 text-ink-faint" />
@@ -323,6 +410,8 @@ export default function MusicPage() {
           </div>
         </section>
       </aside>
+        </>
+      )}
     </div>
   );
 }

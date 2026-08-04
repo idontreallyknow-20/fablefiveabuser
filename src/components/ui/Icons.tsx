@@ -343,6 +343,15 @@ export const IconSpotify = ({ size = 18, ...rest }: P) => (
   </svg>
 );
 
+export const IconInsights = (p: P) => (
+  <I {...p}>
+    <path d="M3.5 16.5v-5" />
+    <path d="M8 16.5v-9" />
+    <path d="M12.5 16.5v-6.5" />
+    <path d="M17 16.5V5" />
+  </I>
+);
+
 export const IconSpark = (p: P) => (
   <I {...p}>
     <path d="M10 3.5c.5 3.2 2.3 5 5.5 5.5-3.2.5-5 2.3-5.5 5.5-.5-3.2-2.3-5-5.5-5.5 3.2-.5 5-2.3 5.5-5.5Z" />

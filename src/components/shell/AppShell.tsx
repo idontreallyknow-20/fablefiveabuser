@@ -8,6 +8,7 @@ import { BackdropMedia } from "@/components/atmosphere/BackdropMedia";
 import {
   IconAmbient,
   IconCalendar,
+  IconInsights,
   IconProjects,
   IconReflect,
   IconSound,
@@ -28,6 +29,7 @@ const NAV = [
   { href: "/today", label: "Today", icon: IconToday },
   { href: "/projects", label: "Projects", icon: IconProjects },
   { href: "/calendar", label: "Calendar", icon: IconCalendar },
+  { href: "/insights", label: "Insights", icon: IconInsights, desktopOnly: true },
   { href: "/train", label: "Train", icon: IconTrain, module: "train" },
   { href: "/reflect", label: "Reflect", icon: IconReflect, module: "reflect" },
   { href: "/sounds", label: "Sounds", icon: IconSound, module: "sounds" },
@@ -145,7 +147,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className="floating fixed inset-x-3 bottom-3 z-40 flex items-center justify-around rounded-2xl px-1 py-1.5 md:hidden"
         style={{ paddingBottom: "max(6px, env(safe-area-inset-bottom))" }}
       >
-        {nav.map(({ href, label, icon: Icon }) => {
+        {nav
+          .filter((item) => !("desktopOnly" in item && item.desktopOnly))
+          .map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href);
           return (
             <Link

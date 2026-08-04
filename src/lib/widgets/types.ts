@@ -17,7 +17,11 @@ export type WidgetKind =
   | "soundpad"
   | "macros"
   | "meals"
-  | "skincare";
+  | "skincare"
+  | "momentum"
+  | "week-shape"
+  | "balance"
+  | "training";
 
 export interface WidgetInstance {
   id: string;
