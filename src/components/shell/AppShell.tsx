@@ -62,11 +62,28 @@ function useIdleAmbient() {
   }, [ambient.autoAfterMin, pathname, router]);
 }
 
+/** `c` anywhere (outside inputs) opens quick capture */
+function useCaptureKey() {
+  const router = useRouter();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "c" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      e.preventDefault();
+      router.push("/capture");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [router]);
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: profile } = useProfile();
   const modules = useSettings((s) => s.settings.modules);
   useIdleAmbient();
+  useCaptureKey();
 
   const nav = NAV.filter(
     (item) => !("module" in item) || modules[item.module as keyof typeof modules],
