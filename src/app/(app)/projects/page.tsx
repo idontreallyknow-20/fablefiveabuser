@@ -23,6 +23,8 @@ import {
   IconTrash,
 } from "@/components/ui/Icons";
 import { isDoneStatus } from "@/components/projects/task-utils";
+import { ProjectColorPicker } from "@/components/projects/ProjectEditors";
+import { withAlpha } from "@/lib/colors";
 
 type Counts = { open: number; done: number };
 
@@ -45,6 +47,7 @@ function ProjectCard({ project, counts }: { project: Project; counts: Counts }) 
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(project.name);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [colorOpen, setColorOpen] = useState(false);
 
   const total = counts.open + counts.done;
   const pct = total > 0 ? Math.round((counts.done / total) * 100) : 0;
@@ -60,7 +63,16 @@ function ProjectCard({ project, counts }: { project: Project; counts: Counts }) 
   };
 
   return (
-    <article className={`surface-raised group flex flex-col p-4 ${project.archived ? "opacity-70" : ""}`}>
+    <article
+      className={`surface-raised group relative flex flex-col overflow-hidden p-4 ${project.archived ? "opacity-70" : ""}`}
+    >
+      {project.color && (
+        <span
+          aria-hidden
+          className="absolute inset-y-0 left-0 w-[3px]"
+          style={{ backgroundColor: withAlpha(project.color, 0.7) }}
+        />
+      )}
       <div className="flex items-start justify-between gap-2">
         {renaming ? (
           <>
@@ -93,6 +105,18 @@ function ProjectCard({ project, counts }: { project: Project; counts: Counts }) 
         )}
         <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-[var(--dur-base)] focus-within:opacity-100 group-hover:opacity-100">
           <button
+            aria-label={`Color of ${project.name}`}
+            aria-expanded={colorOpen}
+            onClick={() => setColorOpen((v) => !v)}
+            className="rounded-lg p-1.5 text-ink-faint transition-colors hover:bg-bg2 hover:text-ink"
+          >
+            <span
+              aria-hidden
+              className={`block h-[11px] w-[11px] rounded-full ${project.color ? "" : "border border-line-strong"}`}
+              style={project.color ? { backgroundColor: withAlpha(project.color, 0.85) } : undefined}
+            />
+          </button>
+          <button
             aria-label={`Rename ${project.name}`}
             onClick={() => {
               setName(project.name);
@@ -121,6 +145,18 @@ function ProjectCard({ project, counts }: { project: Project; counts: Counts }) 
           </button>
         </div>
       </div>
+
+      {colorOpen && (
+        <div className="mt-3">
+          <ProjectColorPicker
+            value={project.color}
+            onChange={(color) => {
+              update.mutate({ id: project.id, patch: { color } });
+              setColorOpen(false);
+            }}
+          />
+        </div>
+      )}
 
       <div className="mt-3 flex items-center gap-3">
         <span
@@ -176,14 +212,16 @@ function CreateProjectModal({ open, onClose }: { open: boolean; onClose: () => v
   const create = useCreateProject();
   const [name, setName] = useState("");
   const [priority, setPriority] = useState("2");
+  const [color, setColor] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const n = name.trim();
     if (!n) return;
-    await create.mutateAsync({ name: n, kind: "general", priority: Number(priority) });
+    await create.mutateAsync({ name: n, kind: "general", priority: Number(priority), color });
     setName("");
     setPriority("2");
+    setColor(null);
     onClose();
   };
 
@@ -204,6 +242,7 @@ function CreateProjectModal({ open, onClose }: { open: boolean; onClose: () => v
             ]}
           />
         </div>
+        <ProjectColorPicker value={color} onChange={setColor} />
         <div className="mt-1 flex justify-end gap-2">
           <Button type="button" variant="quiet" onClick={onClose}>
             Cancel
@@ -235,10 +274,7 @@ export default function ProjectsPage() {
   return (
     <div className="mx-auto w-full max-w-4xl">
       <header className="rise mb-8 mt-[3vh] flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow mb-1.5">Projects</p>
-          <h1 className="display text-3xl text-ink">Everything in motion</h1>
-        </div>
+        <h1 className="display text-3xl text-ink">Projects</h1>
         <Button variant="primary" onClick={() => setCreateOpen(true)}>
           <IconPlus size={15} />
           New project
@@ -275,12 +311,10 @@ export default function ProjectsPage() {
 
       <div className="rise" style={{ "--stagger-i": 3 } as React.CSSProperties}>
         {!isLoading && visible.length === 0 ? (
-          <div className="surface flex flex-col items-start gap-3 px-5 py-8">
-            <p className="text-sm text-ink-dim">
-              Nothing here yet. A project can be as small as a weekend idea.
-            </p>
+          <div className="surface flex items-center justify-center px-5 py-10">
             <Button variant="secondary" size="sm" onClick={() => setCreateOpen(true)}>
-              Start one
+              <IconPlus size={14} />
+              Project
             </Button>
           </div>
         ) : (

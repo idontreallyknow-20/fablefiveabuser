@@ -6,7 +6,6 @@ import { Modal, Confirm } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Field, TextArea } from "@/components/ui/Field";
 import { Segmented } from "@/components/ui/Segmented";
-import { useToast } from "@/components/ui/Toast";
 import { IconPlus } from "@/components/ui/Icons";
 import {
   TASK_CATEGORIES,
@@ -16,6 +15,58 @@ import {
   taskCustom,
   taskLinks,
 } from "@/components/projects/task-utils";
+import { parseRecurrence, type Recurrence } from "@/lib/calendar/recurrence";
+import { useTeam } from "@/lib/data/teams";
+import { colorForTag, withAlpha } from "@/lib/colors";
+
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export function taskChecklist(task: Task): ChecklistItem[] {
+  if (!Array.isArray(task.checklist)) return [];
+  return (task.checklist as unknown[]).flatMap((v) => {
+    if (!v || typeof v !== "object") return [];
+    const r = v as Record<string, unknown>;
+    if (typeof r.text !== "string") return [];
+    return [{ id: String(r.id ?? r.text), text: r.text, done: Boolean(r.done) }];
+  });
+}
+
+/** "2/5" progress chip with a tiny ring; hidden when the task has no checklist */
+export function ChecklistBadge({ task }: { task: Task }) {
+  const items = taskChecklist(task);
+  if (items.length === 0) return null;
+  const done = items.filter((i) => i.done).length;
+  const r = 5;
+  const c = 2 * Math.PI * r;
+  return (
+    <span className="flex items-center gap-1 font-mono text-[11px] text-ink-faint">
+      <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden>
+        <circle cx="6.5" cy="6.5" r={r} fill="none" stroke="var(--line)" strokeWidth="1.5" />
+        <circle
+          cx="6.5"
+          cy="6.5"
+          r={r}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - done / items.length)}
+          transform="rotate(-90 6.5 6.5)"
+        />
+      </svg>
+      <span className="tnum">
+        {done}/{items.length}
+      </span>
+    </span>
+  );
+}
+
+const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
 export const selectCls =
   "h-9 rounded-lg border border-line bg-bg1 px-2 text-[13px] text-ink " +
@@ -102,7 +153,6 @@ function TaskEditForm({
 }) {
   const update = useUpdateTask();
   const del = useDeleteTask();
-  const { toast } = useToast();
 
   const [title, setTitle] = useState(task.title);
   const [status, setStatus] = useState(task.status);
@@ -113,6 +163,17 @@ function TaskEditForm({
   const [note, setNote] = useState(task.note);
   const [links, setLinks] = useState<string[]>(() => taskLinks(task));
   const [newLink, setNewLink] = useState("");
+  const [tags, setTags] = useState<string[]>(() =>
+    Array.isArray(task.tags) ? task.tags : [],
+  );
+  const [newTag, setNewTag] = useState("");
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(() => taskChecklist(task));
+  const [newStep, setNewStep] = useState("");
+  const [recurrence, setRecurrence] = useState<Recurrence | null>(() =>
+    parseRecurrence(task.recurrence),
+  );
+  const { data: teamData } = useTeam();
+  const [teamId, setTeamId] = useState<string | null>(task.team_id ?? null);
   const [category, setCategory] = useState(() => taskCustom(task).category);
   const [nextAction, setNextAction] = useState(() => taskCustom(task).next_action);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -125,6 +186,19 @@ function TaskEditForm({
     setNewLink("");
   };
 
+  const addTag = () => {
+    const t = newTag.trim().toLowerCase().replace(/\s+/g, "-");
+    if (t && !tags.includes(t)) setTags([...tags, t]);
+    setNewTag("");
+  };
+
+  const addStep = () => {
+    const text = newStep.trim();
+    if (!text) return;
+    setChecklist([...checklist, { id: crypto.randomUUID(), text, done: false }]);
+    setNewStep("");
+  };
+
   const save = async () => {
     const patch = {
       title: title.trim() || task.title,
@@ -132,6 +206,10 @@ function TaskEditForm({
       due_date: due || null,
       note,
       links,
+      tags,
+      checklist: checklist as unknown as Task["checklist"],
+      recurrence: recurrence as unknown as Task["recurrence"],
+      team_id: teamId,
       ...(status !== task.status ? statusPatch(status) : {}),
       ...(product
         ? { custom: customPatch(task, { category, next_action: nextAction.trim() }) }
@@ -230,6 +308,223 @@ function TaskEditForm({
                 className="tnum font-mono !h-9 text-[13px]"
               />
             </div>
+
+            {teamData && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[13px] font-medium text-ink-dim">
+                  {teamData.team.name || "Team"}
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={teamId !== null}
+                  aria-label="Shared with team"
+                  onClick={() => setTeamId(teamId ? null : teamData.team.id)}
+                  className={`h-9 rounded-lg border px-3 text-[13px] transition-colors ${
+                    teamId
+                      ? "border-(--accent)/60 bg-accent-soft text-accent"
+                      : "border-line text-ink-faint hover:border-line-strong"
+                  }`}
+                >
+                  {teamId ? "Shared" : "Private"}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="task-repeat" className="text-[13px] font-medium text-ink-dim">
+                Repeat
+              </label>
+              <select
+                id="task-repeat"
+                value={recurrence?.freq ?? ""}
+                onChange={(e) => {
+                  const freq = e.target.value as Recurrence["freq"] | "";
+                  setRecurrence(
+                    freq === ""
+                      ? null
+                      : { freq, interval: recurrence?.interval ?? 1, weekdays: recurrence?.weekdays },
+                  );
+                }}
+                className={selectCls}
+              >
+                <option value="">never</option>
+                <option value="daily">daily</option>
+                <option value="weekly">weekly</option>
+                <option value="monthly">monthly</option>
+              </select>
+            </div>
+            {recurrence && (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="task-interval" className="text-[13px] font-medium text-ink-dim">
+                  Every
+                </label>
+                <input
+                  id="task-interval"
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={recurrence.interval}
+                  onChange={(e) =>
+                    setRecurrence({
+                      ...recurrence,
+                      interval: Math.max(1, Math.min(30, Number(e.target.value) || 1)),
+                    })
+                  }
+                  className={`${selectCls} tnum w-16 font-mono`}
+                />
+              </div>
+            )}
+            {recurrence?.freq === "weekly" && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[13px] font-medium text-ink-dim">Days</span>
+                <div className="flex gap-1">
+                  {WEEKDAY_LABELS.map((label, dow) => {
+                    const on = recurrence.weekdays?.includes(dow) ?? false;
+                    return (
+                      <button
+                        key={dow}
+                        type="button"
+                        aria-pressed={on}
+                        aria-label={`Weekday ${dow}`}
+                        onClick={() => {
+                          const cur = recurrence.weekdays ?? [];
+                          setRecurrence({
+                            ...recurrence,
+                            weekdays: on ? cur.filter((d) => d !== dow) : [...cur, dow],
+                          });
+                        }}
+                        className={`tnum h-8 w-8 rounded-lg border font-mono text-[12px] transition-colors ${
+                          on
+                            ? "border-(--accent)/60 bg-accent-soft text-accent"
+                            : "border-line text-ink-faint hover:border-line-strong"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {checklist.length > 0 && (
+              <ul className="flex flex-col gap-1">
+                {checklist.map((step) => (
+                  <li key={step.id} className="group flex items-center gap-2">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={step.done}
+                      aria-label={step.text}
+                      onClick={() =>
+                        setChecklist(
+                          checklist.map((s) =>
+                            s.id === step.id ? { ...s, done: !s.done } : s,
+                          ),
+                        )
+                      }
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                        step.done
+                          ? "border-(--accent)/60 bg-accent-soft text-accent"
+                          : "border-line hover:border-line-strong"
+                      }`}
+                    >
+                      {step.done && (
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden>
+                          <path d="M3 8.5l3.5 3.5L13 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                      )}
+                    </button>
+                    <span
+                      className={`flex-1 text-[13.5px] ${step.done ? "text-ink-faint line-through" : "text-ink"}`}
+                    >
+                      {step.text}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`Remove step ${step.text}`}
+                      onClick={() => setChecklist(checklist.filter((s) => s.id !== step.id))}
+                      className="rounded-full p-1 text-ink-faint opacity-0 transition-opacity hover:text-ink group-hover:opacity-100"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden>
+                        <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Field
+                  label="Steps"
+                  value={newStep}
+                  onChange={(e) => setNewStep(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addStep();
+                    }
+                  }}
+                />
+              </div>
+              <Button variant="quiet" size="md" onClick={addStep} aria-label="Add step">
+                <IconPlus size={15} />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-1 rounded-full border py-0.5 pl-2.5 pr-1 font-mono text-[11.5px]"
+                    style={{
+                      borderColor: withAlpha(colorForTag(t), 0.4),
+                      backgroundColor: withAlpha(colorForTag(t), 0.1),
+                      color: withAlpha(colorForTag(t), 0.9),
+                    }}
+                  >
+                    {t}
+                    <button
+                      type="button"
+                      aria-label={`Remove tag ${t}`}
+                      onClick={() => setTags(tags.filter((x) => x !== t))}
+                      className="rounded-full p-0.5 text-ink-faint transition-colors hover:bg-bg2 hover:text-ink"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden>
+                        <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Field
+                  label="Tags"
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === ",") {
+                      e.preventDefault();
+                      addTag();
+                    }
+                  }}
+                />
+              </div>
+              <Button variant="quiet" size="md" onClick={addTag} aria-label="Add tag">
+                <IconPlus size={15} />
+              </Button>
+            </div>
           </div>
 
           <TextArea label="Note" value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
@@ -277,8 +572,7 @@ function TaskEditForm({
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         onConfirm={async () => {
-          await del.mutateAsync(task.id);
-          toast("Task deleted");
+          await del.mutateAsync(task);
           onClose();
         }}
         title="Delete task"

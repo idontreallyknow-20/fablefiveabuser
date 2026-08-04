@@ -37,9 +37,7 @@ export function Records() {
       {isLoading ? (
         <p className="text-sm text-ink-faint">Loading</p>
       ) : !hasEntries || withBests.length === 0 ? (
-        <p className="text-sm text-ink-faint">
-          Nothing here yet. Log a first set in a session and your bests will gather quietly.
-        </p>
+        <p className="font-mono text-[12px] text-ink-faint">—</p>
       ) : (
         <ul>
           {withBests.map((r) => (

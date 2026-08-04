@@ -117,7 +117,7 @@ export function CloseToYou() {
           ))}
         </ul>
       ) : (
-        <p className="mt-4 text-sm text-ink-faint">Nothing here yet.</p>
+        <p className="mt-4 font-mono text-[12px] text-ink-faint">—</p>
       )}
     </section>
   );

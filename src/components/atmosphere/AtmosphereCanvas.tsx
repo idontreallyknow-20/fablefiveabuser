@@ -5,6 +5,7 @@ import { Scene, type SceneEnv, type SceneWeather } from "./engine";
 import { EFFECTS } from "./effects";
 import { THEMES, type ThemeId } from "@/lib/themes/registry";
 import { useSettings } from "@/lib/settings/store";
+import { particleOnlyTheme } from "@/lib/backgrounds/filters";
 import { useWeather } from "@/lib/weather/useWeather";
 import { getDayPhase, getMoonIllumination, SKY_PALETTES } from "@/lib/weather/phase";
 import { usePlaybackGlow } from "@/lib/spotify/glow";
@@ -59,6 +60,12 @@ export function AtmosphereCanvas({
   const themeId = themeOverride ?? settings.theme;
   const theme = THEMES[themeId];
 
+  // custom backdrop (BackdropMedia) replaces the scene composition; the
+  // canvas keeps only particle overlays. Override-driven mounts (theme
+  // previews, shared displays) always show the full scene.
+  const backdropActive = !themeOverride && Boolean(settings.background.id);
+  const backdropParticles = settings.background.particles;
+
   const [phaseTick, setPhaseTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setPhaseTick((n) => n + 1), 60_000);
@@ -84,9 +91,21 @@ export function AtmosphereCanvas({
     root.style.setProperty("--sky-accent", p.accent);
   }, [themeId, phase]);
 
+  // destructure so the memo only reacts to the fields it actually reads,
+  // not every settings write anywhere in the app
+  const {
+    weatherReactive,
+    weatherOverride,
+    phaseOverride,
+    timeReactive,
+    reducedMotion,
+    motion,
+    adaptivePerf,
+  } = settings;
+
   const env = useMemo<SceneEnv>(() => {
     const base: SceneWeather =
-      settings.weatherReactive && weather
+      weatherReactive && weather
         ? {
             kind: weather.current.kind,
             precipitation: weather.current.precipitation + weather.current.snowfall,
@@ -96,47 +115,54 @@ export function AtmosphereCanvas({
             isStorm: weather.current.isStorm,
           }
         : CALM_WEATHER;
-    const w: SceneWeather = settings.weatherOverride
+    const w: SceneWeather = weatherOverride
       ? {
           ...base,
-          kind: settings.weatherOverride,
-          isStorm: settings.weatherOverride === "storm",
+          kind: weatherOverride,
+          isStorm: weatherOverride === "storm",
           precipitation:
-            settings.weatherOverride === "rain" || settings.weatherOverride === "storm"
+            weatherOverride === "rain" || weatherOverride === "storm"
               ? Math.max(base.precipitation, 2)
-              : settings.weatherOverride === "snow"
+              : weatherOverride === "snow"
                 ? Math.max(base.precipitation, 1.5)
-                : settings.weatherOverride === "drizzle"
+                : weatherOverride === "drizzle"
                   ? 0.6
                   : 0,
           cloudCover:
-            settings.weatherOverride === "clear"
+            weatherOverride === "clear"
               ? 0.05
-              : settings.weatherOverride === "clouds" || settings.weatherOverride === "storm"
+              : weatherOverride === "clouds" || weatherOverride === "storm"
                 ? 0.85
                 : base.cloudCover,
-          visibility: settings.weatherOverride === "fog" ? 0.2 : base.visibility,
+          visibility: weatherOverride === "fog" ? 0.2 : base.visibility,
         }
       : base;
-    const still = prefersReduced || settings.reducedMotion || settings.motion === "low";
+    const still = prefersReduced || reducedMotion || motion === "low";
     const quality =
-      (settings.motion === "cinematic" ? 1.5 : settings.motion === "low" ? 0.45 : 1) *
+      (motion === "cinematic" ? 1.5 : motion === "low" ? 0.45 : 1) *
       detectAutoQuality();
     return {
       weather: w,
-      phase: settings.phaseOverride ?? (settings.timeReactive ? phase : "night"),
+      weatherLive: Boolean(weatherOverride) || (weatherReactive && Boolean(weather)),
+      phase: phaseOverride ?? (timeReactive ? phase : "night"),
       moonPhase: getMoonIllumination(new Date()),
       quality,
       still,
       glowColor,
     };
-  }, [weather, settings, phase, prefersReduced, glowColor]);
+  }, [weather, weatherReactive, weatherOverride, phaseOverride, timeReactive, reducedMotion, motion, phase, prefersReduced, glowColor]);
 
   // scene lifecycle
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const scene = new Scene(canvas, theme, env, EFFECTS);
+    const scene = new Scene(
+      canvas,
+      backdropActive ? particleOnlyTheme(theme) : theme,
+      env,
+      EFFECTS,
+      { alpha: backdropActive },
+    );
     sceneRef.current = scene;
 
     const parent = canvas.parentElement ?? document.body;
@@ -149,22 +175,42 @@ export function AtmosphereCanvas({
     ro.observe(parent);
     scene.run();
 
+    // fully cancel the rAF loop while the tab is hidden
+    const onVisibility = () => {
+      if (document.hidden) scene.stop();
+      else if (!scene.env.still) scene.run();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
       ro.disconnect();
       scene.destroy();
       sceneRef.current = null;
     };
-    // theme identity change rebuilds the scene
+    // theme identity or backdrop-mode change rebuilds the scene
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [themeId]);
+  }, [themeId, backdropActive, backdropParticles]);
 
   // env updates without rebuild
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
+    scene.adaptive = adaptivePerf;
     scene.setEnv(env);
     if (!env.still) scene.run();
-  }, [env]);
+  }, [env, adaptivePerf]);
+
+  // dev frame-cost HUD, opt-in via ?perf=1
+  const [hud, setHud] = useState<string | null>(null);
+  useEffect(() => {
+    if (!window.location.search.includes("perf=1")) return;
+    const id = setInterval(() => {
+      const st = sceneRef.current?.stats;
+      if (st) setHud(`${st.fps.toFixed(0)}fps ${st.drawMs.toFixed(1)}ms t${st.tier}`);
+    }, 500);
+    return () => clearInterval(id);
+  }, []);
 
   // pointer parallax (desktop, interactive surfaces only)
   useEffect(() => {
@@ -179,13 +225,26 @@ export function AtmosphereCanvas({
     return () => window.removeEventListener("pointermove", onMove);
   }, [interactive]);
 
+  // backdrop without particles: no canvas work at all
+  if (backdropActive && !backdropParticles) return null;
+
   return (
     <div
       className={className ?? "fixed inset-0 -z-10"}
       style={{ filter: `brightness(var(--ui-brightness))` }}
       aria-hidden
     >
-      <canvas ref={canvasRef} className="block h-full w-full" />
+      {/* keyed: 2d context alpha is fixed at creation, so swap the element */}
+      <canvas
+        key={backdropActive ? "alpha" : "opaque"}
+        ref={canvasRef}
+        className="block h-full w-full"
+      />
+      {hud && (
+        <div className="pointer-events-none fixed right-2 top-2 z-50 rounded bg-black/70 px-2 py-1 font-mono text-[11px] text-white">
+          {hud}
+        </div>
+      )}
       {/* theme cross-fade veil handled by parent via key change */}
     </div>
   );

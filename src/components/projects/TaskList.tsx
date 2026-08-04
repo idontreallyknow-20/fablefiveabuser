@@ -11,15 +11,22 @@ import { projectStatuses, type Project } from "@/lib/data/projects";
 import { Button } from "@/components/ui/Button";
 import { Confirm } from "@/components/ui/Modal";
 import { Segmented } from "@/components/ui/Segmented";
-import { useToast } from "@/components/ui/Toast";
 import { IconCheck, IconChevronDown, IconPlus, IconTrash } from "@/components/ui/Icons";
-import { LinkChips, selectCls } from "@/components/projects/TaskEditModal";
+import { ChecklistBadge, LinkChips, selectCls } from "@/components/projects/TaskEditModal";
 import { isDoneStatus, statusPatch, taskLinks } from "@/components/projects/task-utils";
+import { colorForTag, withAlpha } from "@/lib/colors";
 
-function TaskRow({ task, statuses }: { task: Task; statuses: string[] }) {
+function TaskRow({
+  task,
+  statuses,
+  projectColor,
+}: {
+  task: Task;
+  statuses: string[];
+  projectColor: string | null;
+}) {
   const update = useUpdateTask();
   const del = useDeleteTask();
-  const { toast } = useToast();
 
   const [expanded, setExpanded] = useState(false);
   const [note, setNote] = useState(task.note);
@@ -72,15 +79,43 @@ function TaskRow({ task, statuses }: { task: Task; statuses: string[] }) {
           <IconCheck size={12} />
         </button>
 
+        {projectColor && (
+          <span
+            aria-hidden
+            className="h-[7px] w-[7px] shrink-0 rounded-full"
+            style={{ backgroundColor: withAlpha(projectColor, 0.8) }}
+          />
+        )}
         <p className={`min-w-0 flex-1 truncate text-sm text-ink ${done ? "line-through" : ""}`}>
           {task.title}
         </p>
+
+        {Array.isArray(task.tags) && task.tags.length > 0 && (
+          <span className="hidden shrink-0 items-center gap-1 sm:flex">
+            {task.tags.slice(0, 3).map((t) => (
+              <span
+                key={t}
+                className="rounded-full border px-1.5 py-px font-mono text-[10.5px]"
+                style={{
+                  borderColor: withAlpha(colorForTag(t), 0.4),
+                  backgroundColor: withAlpha(colorForTag(t), 0.1),
+                  color: withAlpha(colorForTag(t), 0.9),
+                }}
+              >
+                {t}
+              </span>
+            ))}
+          </span>
+        )}
 
         {task.due_date && (
           <span className="tnum hidden shrink-0 font-mono text-[11px] text-ink-faint sm:inline">
             {task.due_date}
           </span>
         )}
+        <span className="hidden shrink-0 sm:flex">
+          <ChecklistBadge task={task} />
+        </span>
         <span className="tnum hidden shrink-0 font-mono text-[11px] text-ink-faint sm:inline">
           P{task.importance || 2}
         </span>
@@ -220,8 +255,7 @@ function TaskRow({ task, statuses }: { task: Task; statuses: string[] }) {
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         onConfirm={async () => {
-          await del.mutateAsync(task.id);
-          toast("Task deleted");
+          await del.mutateAsync(task);
         }}
         title="Delete task"
         body={`"${task.title}" will be removed for good.`}
@@ -284,7 +318,7 @@ export function TaskList({ project, tasks }: { project: Project; tasks: Task[] }
       ) : (
         <div className="flex flex-col gap-2">
           {sorted.map((t) => (
-            <TaskRow key={t.id} task={t} statuses={statuses} />
+            <TaskRow key={t.id} task={t} statuses={statuses} projectColor={project.color} />
           ))}
         </div>
       )}

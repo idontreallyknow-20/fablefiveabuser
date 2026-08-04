@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { toCsv, downloadCsv } from "@/lib/export/csv";
 import { Button, ActionButton } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Field } from "@/components/ui/Field";
@@ -51,6 +52,31 @@ export default function DataPage() {
     URL.revokeObjectURL(url);
   };
 
+  const exportTasksCsv = async () => {
+    const supabase = supabaseBrowser();
+    const [{ data: tasks, error }, { data: projects }] = await Promise.all([
+      supabase.from("tasks").select("*").limit(10000),
+      supabase.from("projects").select("id,name"),
+    ]);
+    if (error) throw new Error(error.message);
+    const projectName = new Map((projects ?? []).map((p) => [p.id, p.name]));
+    const csv = toCsv(
+      ["title", "status", "due", "scheduled", "completed", "project", "tags", "importance", "note"],
+      (tasks ?? []).map((t) => [
+        t.title,
+        t.status,
+        t.due_date,
+        t.scheduled_at,
+        t.completed_at,
+        t.project_id ? (projectName.get(t.project_id) ?? "") : "",
+        t.tags,
+        t.importance,
+        t.note,
+      ]),
+    );
+    downloadCsv(`orbit-tasks-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+  };
+
   const deleteEverything = async () => {
     const supabase = supabaseBrowser();
     // order respects foreign keys; profiles last
@@ -86,16 +112,15 @@ export default function DataPage() {
   return (
     <div className="space-y-8 pb-8">
       <section className="surface flex flex-wrap items-center justify-between gap-4 p-5" aria-label="Export">
-        <div>
-          <h2 className="eyebrow mb-1">Export</h2>
-          <p className="max-w-md text-sm text-ink-faint">
-            Download everything Orbit stores about you as a single JSON file. Do this
-            occasionally as a backup.
-          </p>
+        <h2 className="eyebrow">Export</h2>
+        <div className="flex flex-wrap gap-2">
+          <ActionButton variant="secondary" onAction={exportTasksCsv}>
+            Tasks CSV
+          </ActionButton>
+          <ActionButton variant="primary" onAction={exportAll}>
+            Everything JSON
+          </ActionButton>
         </div>
-        <ActionButton variant="primary" onAction={exportAll}>
-          Download export
-        </ActionButton>
       </section>
 
       <section className="surface p-5" aria-label="Delete">

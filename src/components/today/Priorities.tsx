@@ -11,6 +11,7 @@ import {
   type Task,
 } from "@/lib/data/tasks";
 import { useProjects } from "@/lib/data/projects";
+import { withAlpha } from "@/lib/colors";
 import { recommendPriorities } from "@/lib/guide/guide";
 import { useSettings } from "@/lib/settings/store";
 import { Modal } from "@/components/ui/Modal";
@@ -69,10 +70,6 @@ function PriorityRow({
             await actions.uncomplete(task);
           } else {
             await actions.complete(task);
-            toast("Done. Well placed.", "success", {
-              label: "Undo",
-              onClick: () => actions.uncomplete(task),
-            });
           }
         }}
         className={`mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border transition-all duration-[var(--dur-base)] ${
@@ -109,7 +106,10 @@ function PriorityRow({
             aria-label={`Move ${task.title} to tomorrow`}
             onClick={async () => {
               await actions.moveToTomorrow(task);
-              toast("Moved to tomorrow");
+              toast("Tomorrow", "info", {
+                label: "Undo",
+                onClick: () => actions.promote(task, task.priority_slot ?? 1, todayISO()),
+              });
             }}
             className="rounded-lg p-1.5 text-ink-faint transition-colors hover:bg-bg2 hover:text-ink"
           >
@@ -120,7 +120,10 @@ function PriorityRow({
             aria-label={`Defer ${task.title} to backlog`}
             onClick={async () => {
               await actions.defer(task);
-              toast("Back in the backlog");
+              toast("Backlog", "info", {
+                label: "Undo",
+                onClick: () => actions.promote(task, task.priority_slot ?? 1, todayISO()),
+              });
             }}
             className="rounded-lg p-1.5 text-ink-faint transition-colors hover:bg-bg2 hover:text-ink"
           >
@@ -163,7 +166,6 @@ export function Priorities() {
   const { data: projects = [] } = useProjects();
   const actions = useTaskActions();
   const create = useCreateTask();
-  const { toast } = useToast();
   const energyToday = useSettings((s) => s.settings.energyToday);
 
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
@@ -174,6 +176,12 @@ export function Priorities() {
     for (const t of priorities) if (t.priority_slot) m.set(t.priority_slot, t);
     return m;
   }, [priorities]);
+
+  const projectColor = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of projects) if (p.color) m.set(p.id, p.color);
+    return m;
+  }, [projects]);
 
   const recommendations = useMemo(() => {
     const ctx = {
@@ -212,7 +220,6 @@ export function Priorities() {
       if (created) setPickerSlot(null);
     } else {
       await create.mutateAsync({ title });
-      toast("Added to backlog");
     }
   };
 
@@ -267,7 +274,18 @@ export function Priorities() {
                   onClick={() => pick(t)}
                   className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-ink-dim transition-colors hover:bg-bg1 hover:text-ink"
                 >
-                  <span className="truncate">{t.title}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    {t.project_id && projectColor.has(t.project_id) && (
+                      <span
+                        aria-hidden
+                        className="h-[7px] w-[7px] shrink-0 rounded-full"
+                        style={{
+                          backgroundColor: withAlpha(projectColor.get(t.project_id)!, 0.8),
+                        }}
+                      />
+                    )}
+                    <span className="truncate">{t.title}</span>
+                  </span>
                   {t.due_date && (
                     <span className="tnum ml-3 shrink-0 font-mono text-[11px] text-ink-faint">
                       {t.due_date}

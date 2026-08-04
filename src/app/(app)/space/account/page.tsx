@@ -127,7 +127,6 @@ export default function AccountPage() {
             toast("PIN lock on", "success");
           }}
           label="Ask for a PIN when returning to this device"
-          description="A light local lock for shared rooms. Not encryption."
         />
         {!settings.pinLock.enabled && (
           <Field

@@ -33,6 +33,7 @@ export function Clock({
 }) {
   const now = useNow();
   const timezone = useSettings((s) => s.settings.location.timezone);
+  const showSeconds = useSettings((s) => s.settings.ui.clockSeconds);
 
   if (!now) {
     return (
@@ -76,6 +77,11 @@ export function Clock({
           :
         </span>
         {mm}
+        {showSeconds && (
+          <span className="ml-[0.12em] align-baseline text-[0.42em] text-ink-faint">
+            {String(seconds).padStart(2, "0")}
+          </span>
+        )}
       </time>
       <div
         className={`tnum mt-2 flex items-center gap-3 font-mono text-[13px] text-ink-dim ${

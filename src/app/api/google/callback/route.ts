@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   const oauthError = url.searchParams.get("error");
   if (oauthError) {
     return redirectTo({
-      error:
+      google_error:
         oauthError === "access_denied"
           ? "Google connection was cancelled."
           : "Google sign-in failed. Please try again.",
@@ -37,21 +37,21 @@ export async function GET(request: NextRequest) {
   const state = url.searchParams.get("state");
   const cookieState = request.cookies.get(STATE_COOKIE)?.value;
   if (!code || !state || !cookieState || state !== cookieState) {
-    return redirectTo({ error: "Sign-in state did not match. Please try connecting again." });
+    return redirectTo({ google_error: "Sign-in state did not match. Please try connecting again." });
   }
 
   if (!integrationStatus.google) {
-    return redirectTo({ error: "Google Calendar is not configured on the server yet." });
+    return redirectTo({ google_error: "Google Calendar is not configured on the server yet." });
   }
 
   const supabase = await supabaseServer();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return redirectTo({ error: "You need to be signed in to connect Google Calendar." });
+  if (!user) return redirectTo({ google_error: "You need to be signed in to connect Google Calendar." });
 
   const db = supabaseAdmin();
-  if (!db) return redirectTo({ error: "Server integrations are not configured yet." });
+  if (!db) return redirectTo({ google_error: "Server integrations are not configured yet." });
 
   try {
     const tokens = await exchangeGoogleCode(code);
@@ -146,6 +146,6 @@ export async function GET(request: NextRequest) {
     return redirectTo({ connected: "google" });
   } catch (e) {
     console.error("[google callback]", e);
-    return redirectTo({ error: "Could not finish connecting Google Calendar. Please try again." });
+    return redirectTo({ google_error: "Could not finish connecting Google Calendar. Please try again." });
   }
 }
