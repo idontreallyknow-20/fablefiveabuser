@@ -44,16 +44,22 @@ export function SettingsSync() {
         | (Partial<OrbitSettings> & { _savedAt?: string })
         | null;
       if (remote && typeof remote === "object" && "theme" in remote) {
-        // newest copy wins so an older device can't clobber recent edits
-        const localSavedAt =
-          typeof window !== "undefined"
-            ? (JSON.parse(localStorage.getItem("orbit-settings-saved-at") ?? "null") as
-                | string
-                | null)
-            : null;
-        if (!localSavedAt || !remote._savedAt || remote._savedAt >= localSavedAt) {
+        // newest copy wins: adopt the profile only when it is newer than
+        // the last local edit; otherwise keep local and push it up
+        const localModifiedAt = (() => {
+          try {
+            return JSON.parse(
+              localStorage.getItem("orbit-settings-modified-at") ?? "null",
+            ) as string | null;
+          } catch {
+            return null;
+          }
+        })();
+        if (!localModifiedAt || (remote._savedAt && remote._savedAt > localModifiedAt)) {
           skipNextSave.current = true;
           replaceAll(normalizeSettings(remote));
+        } else {
+          skipNextSave.current = false;
         }
       }
       markProfileHydrated();
@@ -78,7 +84,6 @@ export function SettingsSync() {
       } = await supabase.auth.getUser();
       if (!user) return;
       const savedAt = new Date().toISOString();
-      localStorage.setItem("orbit-settings-saved-at", JSON.stringify(savedAt));
       await supabase
         .from("profiles")
         .update({

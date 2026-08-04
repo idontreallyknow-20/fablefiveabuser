@@ -149,13 +149,13 @@ export default function MusicPage() {
         <div className="relative shrink-0">
           <div
             aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[135%] w-[135%] -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-[var(--dur-scene)]"
+            className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[165%] w-[165%] -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-[var(--dur-scene)]"
             style={{
               background: glow
-                ? `radial-gradient(circle, ${glow} 0%, transparent 68%)`
+                ? `radial-gradient(circle, ${glow} 0%, color-mix(in srgb, ${glow} 45%, transparent) 42%, transparent 72%)`
                 : undefined,
-              filter: "blur(72px)",
-              opacity: glow ? (track ? 0.65 : 0.35) : 0,
+              filter: "blur(56px)",
+              opacity: glow ? (track ? 0.85 : 0.4) : 0,
             }}
           />
           {art ? (
@@ -163,7 +163,7 @@ export default function MusicPage() {
             <img
               src={art}
               alt=""
-              className={`relative w-[min(72vw,300px)] rounded-[24px] border border-line object-cover transition-opacity duration-[var(--dur-scene)] sm:w-[min(56vw,380px)] lg:w-[clamp(300px,32vw,460px)] ${
+              className={`relative aspect-square w-[min(72vw,300px)] rounded-[24px] border border-line object-cover transition-opacity duration-[var(--dur-scene)] sm:w-[min(56vw,380px)] lg:w-[clamp(300px,32vw,460px)] ${
                 track ? "" : "opacity-45 saturate-[0.65]"
               }`}
             />

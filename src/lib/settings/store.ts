@@ -158,8 +158,16 @@ export const useSettings = create<SettingsState>()(
     (set) => ({
       settings: DEFAULT_SETTINGS,
       hydratedFromProfile: false,
-      set: (patch) =>
-        set((s) => ({ settings: { ...s.settings, ...patch } })),
+      set: (patch) => {
+        // stamp local edits so profile hydration can't clobber newer ones
+        try {
+          localStorage.setItem(
+            "orbit-settings-modified-at",
+            JSON.stringify(new Date().toISOString()),
+          );
+        } catch {}
+        set((s) => ({ settings: { ...s.settings, ...patch } }));
+      },
       replaceAll: (next) => set({ settings: next }),
       markProfileHydrated: () => set({ hydratedFromProfile: true }),
     }),
