@@ -77,7 +77,6 @@ export default function AppearancePage() {
                   <p className={`text-[13px] font-medium ${active ? "text-accent" : "text-ink"}`}>
                     {t.name}
                   </p>
-                  <p className="mt-0.5 truncate text-[11.5px] text-ink-faint">{t.tagline}</p>
                 </div>
               </button>
             );
@@ -102,7 +101,6 @@ export default function AppearancePage() {
                 <p className={`text-[13.5px] font-medium ${active ? "text-accent" : "text-ink"}`}>
                   {p.name}
                 </p>
-                <p className="mt-0.5 text-[12px] text-ink-faint">{p.description}</p>
               </button>
             );
           })}
@@ -154,7 +152,6 @@ export default function AppearancePage() {
             checked={settings.reducedMotion}
             onChange={(reducedMotion) => set({ reducedMotion })}
             label="Reduce motion"
-            description="Freezes the scene and simplifies transitions"
           />
         </div>
       </section>
@@ -217,19 +214,16 @@ export default function AppearancePage() {
           checked={settings.weatherReactive}
           onChange={(weatherReactive) => set({ weatherReactive })}
           label="React to real weather"
-          description="Rain, snow, fog and clouds follow Richmond Hill conditions"
         />
         <Toggle
           checked={settings.timeReactive}
           onChange={(timeReactive) => set({ timeReactive })}
           label="React to time of day"
-          description="Sunrise, golden hour and night follow the actual sky"
         />
         <Toggle
           checked={settings.albumGlow}
           onChange={(albumGlow) => set({ albumGlow })}
           label="Album light"
-          description="Playing music tints the scene with the artwork's color, subtly"
         />
         <div className="mt-3 grid grid-cols-1 gap-3 border-t border-line pt-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5">
@@ -291,7 +285,6 @@ export default function AppearancePage() {
                 set({ autoSchedule: { ...settings.autoSchedule, followSun } })
               }
               label="Follow sunrise and sunset"
-              description="Otherwise the fixed hours below are used"
             />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1.5">
@@ -391,7 +384,6 @@ export default function AppearancePage() {
             set({ ambient: { ...settings.ambient, burnInProtection } })
           }
           label="Protect against burn-in"
-          description="Drifts the composition a few pixels now and then"
         />
         <Toggle
           checked={settings.ambient.nightDimming}

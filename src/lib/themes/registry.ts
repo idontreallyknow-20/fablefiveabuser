@@ -45,6 +45,8 @@ export interface SceneLayerConfig {
   weather?: WeatherGate[];
   /** render only during these day phases */
   phases?: DayPhase[];
+  /** theme-defining layer: ignores the weather gate when live weather is off */
+  signature?: boolean;
 }
 
 export type WeatherGate =
@@ -99,8 +101,8 @@ export const THEMES: Record<ThemeId, ThemeDef> = {
       { effect: "clouds", intensity: 0.5, depth: 0.1 },
       { effect: "city-lights", intensity: 0.85, depth: 0.25 },
       { effect: "fog", intensity: 0.35, depth: 0.45 },
-      { effect: "rain", intensity: 0.7, depth: 0.8 },
-      { effect: "droplets", intensity: 0.6, depth: 1 },
+      { effect: "rain", intensity: 0.7, depth: 0.8, weather: ["rain", "drizzle", "storm"], signature: true },
+      { effect: "droplets", intensity: 0.6, depth: 1, weather: ["rain", "drizzle", "storm"], signature: true },
     ],
     ambientFocus: "weather",
   },

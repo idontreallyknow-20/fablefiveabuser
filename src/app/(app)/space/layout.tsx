@@ -20,7 +20,6 @@ export default function SpaceLayout({ children }: { children: React.ReactNode })
     <div className="mx-auto max-w-4xl">
       <header className="rise mb-8">
         <h1 className="display text-3xl font-light text-ink">Space</h1>
-        <p className="mt-1 text-sm text-ink-faint">The room behind the room</p>
       </header>
       <nav aria-label="Settings sections" className="rise mb-8 flex flex-wrap gap-1.5" style={{ "--stagger-i": 1 } as React.CSSProperties}>
         {SECTIONS.map((s) => {

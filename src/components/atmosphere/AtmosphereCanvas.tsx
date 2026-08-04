@@ -124,6 +124,7 @@ export function AtmosphereCanvas({
       detectAutoQuality();
     return {
       weather: w,
+      weatherLive: Boolean(settings.weatherOverride) || (settings.weatherReactive && Boolean(weather)),
       phase: settings.phaseOverride ?? (settings.timeReactive ? phase : "night"),
       moonPhase: getMoonIllumination(new Date()),
       quality,
@@ -149,7 +150,15 @@ export function AtmosphereCanvas({
     ro.observe(parent);
     scene.run();
 
+    // fully cancel the rAF loop while the tab is hidden
+    const onVisibility = () => {
+      if (document.hidden) scene.stop();
+      else if (!scene.env.still) scene.run();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
       ro.disconnect();
       scene.destroy();
       sceneRef.current = null;

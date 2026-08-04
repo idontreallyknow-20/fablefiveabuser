@@ -16,6 +16,8 @@ export interface SceneWeather {
 
 export interface SceneEnv {
   weather: SceneWeather;
+  /** true when real (or overridden) weather is driving the scene */
+  weatherLive: boolean;
   phase: DayPhase;
   /** moon illumination 0..1 */
   moonPhase: number;
@@ -62,7 +64,10 @@ export function mulberry32(seed: number) {
 export function gateIntensity(layer: SceneLayerConfig, env: SceneEnv): number {
   const v = layer.intensity;
   if (layer.weather && layer.weather.length > 0 && !layer.weather.includes("any")) {
-    if (!layer.weather.includes(env.weather.kind)) return 0;
+    if (!layer.weather.includes(env.weather.kind)) {
+      // signature layers keep playing when the user opted out of live weather
+      if (!(layer.signature && !env.weatherLive)) return 0;
+    }
   }
   if (layer.phases && layer.phases.length > 0 && !layer.phases.includes(env.phase)) {
     return 0;
@@ -76,6 +81,7 @@ export class Scene {
   private running = false;
   private start = 0;
   private last = 0;
+  private elapsedMs = 0;
   private px = 0;
   private py = 0;
   private targetPx = 0;
@@ -165,13 +171,14 @@ export class Scene {
   run() {
     if (this.running) return;
     this.running = true;
-    this.start = performance.now();
-    this.last = this.start;
+    // resume scene time where it left off so animations don't jump
+    this.start = performance.now() - this.elapsedMs;
+    this.last = performance.now();
     const loop = (now: number) => {
       if (!this.running) return;
       const dt = Math.min(0.05, (now - this.last) / 1000);
       this.last = now;
-      if (!document.hidden) this.drawFrame(dt);
+      this.drawFrame(dt);
       if (this.env.still) {
         this.running = false;
         return;
@@ -182,6 +189,7 @@ export class Scene {
   }
 
   stop() {
+    if (this.running) this.elapsedMs = performance.now() - this.start;
     this.running = false;
     cancelAnimationFrame(this.raf);
   }

@@ -81,7 +81,8 @@ export function useSpotifyPlayback(enabled: boolean): SpotifyPlaybackState {
       }>;
     },
     enabled,
-    refetchInterval: 5000,
+    // no polling while the tab is hidden
+    refetchInterval: () => (typeof document !== "undefined" && document.hidden ? false : 5000),
     retry: false,
   });
 
