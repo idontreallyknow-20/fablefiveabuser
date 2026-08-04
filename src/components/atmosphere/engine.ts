@@ -75,6 +75,10 @@ export function gateIntensity(layer: SceneLayerConfig, env: SceneEnv): number {
   return v;
 }
 
+/** adaptive tiers: draw-cost governor steps these down on slow machines */
+const TIER_DPR_CAP = [Infinity, 1.1, 1];
+const TIER_QUALITY = [1, 0.65, 0.4];
+
 export class Scene {
   private ctx: CanvasRenderingContext2D;
   private raf = 0;
@@ -90,6 +94,14 @@ export class Scene {
   private w = 0;
   private h = 0;
   private dpr = 1;
+  private baseDpr = 1;
+  private tier = 0;
+  private costEma = 6;
+  private evalIn = 2;
+  private skipFrame = false;
+  /** when false the governor is disabled and tier stays 0 */
+  adaptive = true;
+  stats = { fps: 60, drawMs: 6, tier: 0 };
   env: SceneEnv;
 
   constructor(
@@ -132,24 +144,49 @@ export class Scene {
   resize(w: number, h: number, dpr: number) {
     this.w = w;
     this.h = h;
-    this.dpr = dpr;
-    this.canvas.width = Math.round(w * dpr);
-    this.canvas.height = Math.round(h * dpr);
+    this.baseDpr = dpr;
+    this.dpr = Math.min(dpr, TIER_DPR_CAP[this.tier]);
+    this.canvas.width = Math.round(w * this.dpr);
+    this.canvas.height = Math.round(h * this.dpr);
     this.canvas.style.width = `${w}px`;
     this.canvas.style.height = `${h}px`;
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     for (const { r } of this.renderers) r.resize?.(w, h);
     if (!this.running) this.drawFrame(this.last || 0.016);
   }
 
+  private setTier(tier: number) {
+    if (tier === this.tier) return;
+    this.tier = tier;
+    this.stats.tier = tier;
+    this.resize(this.w, this.h, this.baseDpr);
+  }
+
+  /** steps quality down when frames are expensive, back up when cheap */
+  private govern(dt: number) {
+    if (!this.adaptive) {
+      if (this.tier !== 0) this.setTier(0);
+      return;
+    }
+    this.evalIn -= dt;
+    if (this.evalIn > 0) return;
+    this.evalIn = 2;
+    if (this.costEma > 9 && this.tier < 2) this.setTier(this.tier + 1);
+    else if (this.costEma < 3.5 && this.tier > 0) this.setTier(this.tier - 1);
+  }
+
   private drawFrame(dt: number) {
-    const t = (performance.now() - this.start) / 1000;
+    const t0 = performance.now();
+    const t = (t0 - this.start) / 1000;
     this.px += (this.targetPx - this.px) * Math.min(1, dt * 3);
     this.py += (this.targetPy - this.py) * Math.min(1, dt * 3);
+    const scale = TIER_QUALITY[this.tier];
+    const env =
+      scale === 1 ? this.env : { ...this.env, quality: this.env.quality * scale };
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.w, this.h);
     for (const { layer, r } of this.renderers) {
-      const intensity = gateIntensity(layer, this.env);
+      const intensity = gateIntensity(layer, env);
       if (intensity <= 0.001) continue;
       ctx.save();
       r.draw(ctx, {
@@ -159,13 +196,16 @@ export class Scene {
         dt,
         px: this.px,
         py: this.py,
-        env: this.env,
+        env,
         intensity,
         depth: layer.depth,
         theme: this.theme,
       });
       ctx.restore();
     }
+    const cost = performance.now() - t0;
+    this.costEma += (cost - this.costEma) * 0.08;
+    this.stats.drawMs = this.costEma;
   }
 
   run() {
@@ -178,7 +218,13 @@ export class Scene {
       if (!this.running) return;
       const dt = Math.min(0.05, (now - this.last) / 1000);
       this.last = now;
-      this.drawFrame(dt);
+      if (dt > 0) this.stats.fps += (1 / dt - this.stats.fps) * 0.05;
+      // lowest tier renders at half rate
+      this.skipFrame = this.tier === 2 && !this.skipFrame;
+      if (!this.skipFrame) {
+        this.drawFrame(this.tier === 2 ? dt * 2 : dt);
+        this.govern(dt);
+      }
       if (this.env.still) {
         this.running = false;
         return;

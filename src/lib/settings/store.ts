@@ -29,6 +29,8 @@ export interface AmbientSettings {
 export interface OrbitSettings {
   theme: ThemeId;
   motion: MotionLevel;
+  /** let the scene step its own quality down on slow machines */
+  adaptivePerf: boolean;
   reducedMotion: boolean;
   brightness: number; // 0.6 .. 1
   uiOpacity: number; // 0.7 .. 1
@@ -67,6 +69,7 @@ export interface OrbitSettings {
 export const DEFAULT_SETTINGS: OrbitSettings = {
   theme: DEFAULT_THEME,
   motion: "balanced",
+  adaptivePerf: true,
   reducedMotion: false,
   brightness: 1,
   uiOpacity: 1,
@@ -129,6 +132,14 @@ export const useSettings = create<SettingsState>()(
     {
       name: "orbit-settings",
       partialize: (s) => ({ settings: s.settings }),
+      // deep-fill defaults so settings added in newer builds hydrate correctly
+      merge: (persisted, current) => {
+        const p = persisted as { settings?: Partial<OrbitSettings> } | undefined;
+        return {
+          ...current,
+          settings: { ...DEFAULT_SETTINGS, ...(p?.settings ?? {}) },
+        };
+      },
     },
   ),
 );

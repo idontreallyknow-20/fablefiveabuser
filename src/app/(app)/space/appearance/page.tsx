@@ -153,6 +153,11 @@ export default function AppearancePage() {
             onChange={(reducedMotion) => set({ reducedMotion })}
             label="Reduce motion"
           />
+          <Toggle
+            checked={settings.adaptivePerf}
+            onChange={(adaptivePerf) => set({ adaptivePerf })}
+            label="Adaptive performance"
+          />
         </div>
       </section>
 

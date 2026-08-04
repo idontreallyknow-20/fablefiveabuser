@@ -84,9 +84,21 @@ export function AtmosphereCanvas({
     root.style.setProperty("--sky-accent", p.accent);
   }, [themeId, phase]);
 
+  // destructure so the memo only reacts to the fields it actually reads,
+  // not every settings write anywhere in the app
+  const {
+    weatherReactive,
+    weatherOverride,
+    phaseOverride,
+    timeReactive,
+    reducedMotion,
+    motion,
+    adaptivePerf,
+  } = settings;
+
   const env = useMemo<SceneEnv>(() => {
     const base: SceneWeather =
-      settings.weatherReactive && weather
+      weatherReactive && weather
         ? {
             kind: weather.current.kind,
             precipitation: weather.current.precipitation + weather.current.snowfall,
@@ -96,42 +108,42 @@ export function AtmosphereCanvas({
             isStorm: weather.current.isStorm,
           }
         : CALM_WEATHER;
-    const w: SceneWeather = settings.weatherOverride
+    const w: SceneWeather = weatherOverride
       ? {
           ...base,
-          kind: settings.weatherOverride,
-          isStorm: settings.weatherOverride === "storm",
+          kind: weatherOverride,
+          isStorm: weatherOverride === "storm",
           precipitation:
-            settings.weatherOverride === "rain" || settings.weatherOverride === "storm"
+            weatherOverride === "rain" || weatherOverride === "storm"
               ? Math.max(base.precipitation, 2)
-              : settings.weatherOverride === "snow"
+              : weatherOverride === "snow"
                 ? Math.max(base.precipitation, 1.5)
-                : settings.weatherOverride === "drizzle"
+                : weatherOverride === "drizzle"
                   ? 0.6
                   : 0,
           cloudCover:
-            settings.weatherOverride === "clear"
+            weatherOverride === "clear"
               ? 0.05
-              : settings.weatherOverride === "clouds" || settings.weatherOverride === "storm"
+              : weatherOverride === "clouds" || weatherOverride === "storm"
                 ? 0.85
                 : base.cloudCover,
-          visibility: settings.weatherOverride === "fog" ? 0.2 : base.visibility,
+          visibility: weatherOverride === "fog" ? 0.2 : base.visibility,
         }
       : base;
-    const still = prefersReduced || settings.reducedMotion || settings.motion === "low";
+    const still = prefersReduced || reducedMotion || motion === "low";
     const quality =
-      (settings.motion === "cinematic" ? 1.5 : settings.motion === "low" ? 0.45 : 1) *
+      (motion === "cinematic" ? 1.5 : motion === "low" ? 0.45 : 1) *
       detectAutoQuality();
     return {
       weather: w,
-      weatherLive: Boolean(settings.weatherOverride) || (settings.weatherReactive && Boolean(weather)),
-      phase: settings.phaseOverride ?? (settings.timeReactive ? phase : "night"),
+      weatherLive: Boolean(weatherOverride) || (weatherReactive && Boolean(weather)),
+      phase: phaseOverride ?? (timeReactive ? phase : "night"),
       moonPhase: getMoonIllumination(new Date()),
       quality,
       still,
       glowColor,
     };
-  }, [weather, settings, phase, prefersReduced, glowColor]);
+  }, [weather, weatherReactive, weatherOverride, phaseOverride, timeReactive, reducedMotion, motion, phase, prefersReduced, glowColor]);
 
   // scene lifecycle
   useEffect(() => {
@@ -171,9 +183,21 @@ export function AtmosphereCanvas({
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
+    scene.adaptive = adaptivePerf;
     scene.setEnv(env);
     if (!env.still) scene.run();
-  }, [env]);
+  }, [env, adaptivePerf]);
+
+  // dev frame-cost HUD, opt-in via ?perf=1
+  const [hud, setHud] = useState<string | null>(null);
+  useEffect(() => {
+    if (!window.location.search.includes("perf=1")) return;
+    const id = setInterval(() => {
+      const st = sceneRef.current?.stats;
+      if (st) setHud(`${st.fps.toFixed(0)}fps ${st.drawMs.toFixed(1)}ms t${st.tier}`);
+    }, 500);
+    return () => clearInterval(id);
+  }, []);
 
   // pointer parallax (desktop, interactive surfaces only)
   useEffect(() => {
@@ -195,6 +219,11 @@ export function AtmosphereCanvas({
       aria-hidden
     >
       <canvas ref={canvasRef} className="block h-full w-full" />
+      {hud && (
+        <div className="pointer-events-none fixed right-2 top-2 z-50 rounded bg-black/70 px-2 py-1 font-mono text-[11px] text-white">
+          {hud}
+        </div>
+      )}
       {/* theme cross-fade veil handled by parent via key change */}
     </div>
   );
