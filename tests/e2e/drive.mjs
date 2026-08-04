@@ -147,6 +147,19 @@ try {
     check("palette adds task with NL date and finds it", false, "palette did not open");
   }
 
+  // ---- assistant panel (no API key locally: opens, shows unconfigured state) ----
+  await page.keyboard.press("Control+j");
+  await page.waitForTimeout(400);
+  const assistantPanel = page.getByRole("dialog", { name: "Assistant" });
+  if (await assistantPanel.isVisible().catch(() => false)) {
+    await shot("26-assistant");
+    check("assistant panel opens via hotkey", true);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+  } else {
+    check("assistant panel opens via hotkey", false, "dialog not visible");
+  }
+
   // ---- soundboard ----
   await page.goto(`${BASE}/sounds`, { waitUntil: "networkidle" });
   await page.waitForTimeout(800);

@@ -9,6 +9,7 @@ import { THEME_LIST, type ThemeId } from "@/lib/themes/registry";
 import { useSettings } from "@/lib/settings/store";
 import { useCreateTask, useTasks, useTaskActions, type Task } from "@/lib/data/tasks";
 import { parseEntry } from "@/lib/nlp/date";
+import { useAssistant } from "@/lib/assistant/store";
 import { TaskEditModal } from "@/components/projects/TaskEditModal";
 import { IconCheck } from "@/components/ui/Icons";
 
@@ -98,6 +99,19 @@ export function CommandPalette() {
             due_date: parsed.dueDate,
             scheduled_at: parsed.scheduledAt,
           });
+          close();
+        },
+      });
+    }
+
+    if (!q || score("assistant", q) > 0 || score("ask", q) > 0) {
+      out.push({
+        id: "assistant",
+        kind: "page",
+        label: "Assistant",
+        hint: "⌘J",
+        run: () => {
+          useAssistant.getState().setOpen(true);
           close();
         },
       });

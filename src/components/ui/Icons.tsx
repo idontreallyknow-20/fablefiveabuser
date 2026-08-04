@@ -343,6 +343,13 @@ export const IconSpotify = ({ size = 18, ...rest }: P) => (
   </svg>
 );
 
+export const IconSpark = (p: P) => (
+  <I {...p}>
+    <path d="M10 3.5c.5 3.2 2.3 5 5.5 5.5-3.2.5-5 2.3-5.5 5.5-.5-3.2-2.3-5-5.5-5.5 3.2-.5 5-2.3 5.5-5.5Z" />
+    <path d="M15.5 13.5c.25 1.4 1.1 2.25 2.5 2.5-1.4.25-2.25 1.1-2.5 2.5-.25-1.4-1.1-2.25-2.5-2.5 1.4-.25 2.25-1.1 2.5-2.5Z" />
+  </I>
+);
+
 export const IconGoogle = ({ size = 18, ...rest }: P) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden {...rest}>
     <circle cx="10" cy="10" r="7.5" />

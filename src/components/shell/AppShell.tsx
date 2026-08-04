@@ -22,6 +22,7 @@ import { AutoTheme } from "@/components/shell/AutoTheme";
 import { NotificationEngine } from "@/components/shell/NotificationEngine";
 import { OutboxDot } from "@/components/shell/OutboxDot";
 import { CommandPalette } from "@/components/shell/CommandPalette";
+import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 
 const NAV = [
   { href: "/today", label: "Today", icon: IconToday },
@@ -81,6 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <PinGate />
         <OutboxDot />
         <CommandPalette />
+        <AssistantPanel />
         {children}
       </div>
     );
@@ -94,6 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <PinGate />
       <OutboxDot />
       <CommandPalette />
+      <AssistantPanel />
 
       {/* desktop rail */}
       <nav
