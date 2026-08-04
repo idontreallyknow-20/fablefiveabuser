@@ -6,6 +6,7 @@ import { projectStatuses, type Project } from "@/lib/data/projects";
 import { Button } from "@/components/ui/Button";
 import { IconPlus } from "@/components/ui/Icons";
 import { isDoneStatus, statusPatch, taskCustom } from "@/components/projects/task-utils";
+import { ChecklistBadge } from "@/components/projects/TaskEditModal";
 
 function ChevronLeft() {
   return (
@@ -75,6 +76,7 @@ function BoardCard({
         {task.due_date && (
           <span className="tnum font-mono text-[11px] text-ink-faint">{task.due_date}</span>
         )}
+        <ChecklistBadge task={task} />
         <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity duration-[var(--dur-base)] focus-within:opacity-100 group-hover:opacity-100">
           {prev && (
             <button

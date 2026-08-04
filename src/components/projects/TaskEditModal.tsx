@@ -34,6 +34,37 @@ export function taskChecklist(task: Task): ChecklistItem[] {
   });
 }
 
+/** "2/5" progress chip with a tiny ring; hidden when the task has no checklist */
+export function ChecklistBadge({ task }: { task: Task }) {
+  const items = taskChecklist(task);
+  if (items.length === 0) return null;
+  const done = items.filter((i) => i.done).length;
+  const r = 5;
+  const c = 2 * Math.PI * r;
+  return (
+    <span className="flex items-center gap-1 font-mono text-[11px] text-ink-faint">
+      <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden>
+        <circle cx="6.5" cy="6.5" r={r} fill="none" stroke="var(--line)" strokeWidth="1.5" />
+        <circle
+          cx="6.5"
+          cy="6.5"
+          r={r}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - done / items.length)}
+          transform="rotate(-90 6.5 6.5)"
+        />
+      </svg>
+      <span className="tnum">
+        {done}/{items.length}
+      </span>
+    </span>
+  );
+}
+
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
 export const selectCls =

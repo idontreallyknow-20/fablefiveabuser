@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Confirm } from "@/components/ui/Modal";
 import { Segmented } from "@/components/ui/Segmented";
 import { IconCheck, IconChevronDown, IconPlus, IconTrash } from "@/components/ui/Icons";
-import { LinkChips, selectCls } from "@/components/projects/TaskEditModal";
+import { ChecklistBadge, LinkChips, selectCls } from "@/components/projects/TaskEditModal";
 import { isDoneStatus, statusPatch, taskLinks } from "@/components/projects/task-utils";
 
 function TaskRow({ task, statuses }: { task: Task; statuses: string[] }) {
@@ -79,6 +79,9 @@ function TaskRow({ task, statuses }: { task: Task; statuses: string[] }) {
             {task.due_date}
           </span>
         )}
+        <span className="hidden shrink-0 sm:flex">
+          <ChecklistBadge task={task} />
+        </span>
         <span className="tnum hidden shrink-0 font-mono text-[11px] text-ink-faint sm:inline">
           P{task.importance || 2}
         </span>
