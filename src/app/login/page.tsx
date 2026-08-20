@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { AtmosphereCanvas } from "@/components/atmosphere/AtmosphereCanvas";
@@ -14,20 +14,12 @@ function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
   const [mode, setMode] = useState<Mode>("signin");
-  const [signupsOpen, setSignupsOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/auth/signup")
-      .then((r) => r.json())
-      .then((d) => setSignupsOpen(Boolean(d.open)))
-      .catch(() => {});
-  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,15 +126,13 @@ function LoginInner() {
                 >
                   Forgot password
                 </button>
-                {signupsOpen && (
-                  <button
-                    type="button"
-                    className="text-accent transition-colors hover:opacity-80"
-                    onClick={() => setMode("signup")}
-                  >
-                    Create account
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="text-accent transition-colors hover:opacity-80"
+                  onClick={() => setMode("signup")}
+                >
+                  Create account
+                </button>
               </>
             ) : (
               <button
