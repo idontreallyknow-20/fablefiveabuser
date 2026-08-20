@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import {
   applySettingsToDocument,
-  DEFAULT_SETTINGS,
+  normalizeSettings,
   useSettings,
   type OrbitSettings,
 } from "@/lib/settings/store";
@@ -40,10 +40,27 @@ export function SettingsSync() {
         .eq("id", user.id)
         .maybeSingle();
       if (cancelled) return;
-      const remote = (data?.settings ?? null) as Partial<OrbitSettings> | null;
+      const remote = (data?.settings ?? null) as
+        | (Partial<OrbitSettings> & { _savedAt?: string })
+        | null;
       if (remote && typeof remote === "object" && "theme" in remote) {
-        skipNextSave.current = true;
-        replaceAll({ ...DEFAULT_SETTINGS, ...remote });
+        // newest copy wins: adopt the profile only when it is newer than
+        // the last local edit; otherwise keep local and push it up
+        const localModifiedAt = (() => {
+          try {
+            return JSON.parse(
+              localStorage.getItem("orbit-settings-modified-at") ?? "null",
+            ) as string | null;
+          } catch {
+            return null;
+          }
+        })();
+        if (!localModifiedAt || (remote._savedAt && remote._savedAt > localModifiedAt)) {
+          skipNextSave.current = true;
+          replaceAll(normalizeSettings(remote));
+        } else {
+          skipNextSave.current = false;
+        }
       }
       markProfileHydrated();
     })();
@@ -66,9 +83,12 @@ export function SettingsSync() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+      const savedAt = new Date().toISOString();
       await supabase
         .from("profiles")
-        .update({ settings: JSON.parse(JSON.stringify(settings)) })
+        .update({
+          settings: { ...JSON.parse(JSON.stringify(settings)), _savedAt: savedAt },
+        })
         .eq("id", user.id);
     }, 1200);
     return () => {

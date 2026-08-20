@@ -342,6 +342,45 @@ export type Database = {
           },
         ]
       }
+      meals: {
+        Row: {
+          calories: number
+          carbs_g: number
+          created_at: string
+          date: string
+          fat_g: number
+          id: string
+          name: string
+          note: string
+          protein_g: number
+          user_id: string
+        }
+        Insert: {
+          calories?: number
+          carbs_g?: number
+          created_at?: string
+          date?: string
+          fat_g?: number
+          id?: string
+          name?: string
+          note?: string
+          protein_g?: number
+          user_id: string
+        }
+        Update: {
+          calories?: number
+          carbs_g?: number
+          created_at?: string
+          date?: string
+          fat_g?: number
+          id?: string
+          name?: string
+          note?: string
+          protein_g?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       nerf_content: {
         Row: {
           caption: string
@@ -746,8 +785,57 @@ export type Database = {
         }
         Relationships: []
       }
+      soundboard_pads: {
+        Row: {
+          color: string
+          created_at: string
+          gain: number
+          hotkey: string
+          id: string
+          kind: string
+          label: string
+          loop: boolean
+          params: Json
+          sample_path: string | null
+          slot: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          gain?: number
+          hotkey?: string
+          id?: string
+          kind?: string
+          label?: string
+          loop?: boolean
+          params?: Json
+          sample_path?: string | null
+          slot?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          gain?: number
+          hotkey?: string
+          id?: string
+          kind?: string
+          label?: string
+          loop?: boolean
+          params?: Json
+          sample_path?: string | null
+          slot?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
+          checklist: Json
           completed_at: string | null
           created_at: string
           custom: Json
@@ -765,13 +853,17 @@ export type Database = {
           project_id: string | null
           scheduled_at: string | null
           scheduled_end_at: string | null
+          recurrence: Json | null
           sort_order: number
           status: string
+          tags: string[]
+          team_id: string | null
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          checklist?: Json
           completed_at?: string | null
           created_at?: string
           custom?: Json
@@ -789,13 +881,17 @@ export type Database = {
           project_id?: string | null
           scheduled_at?: string | null
           scheduled_end_at?: string | null
+          recurrence?: Json | null
           sort_order?: number
           status?: string
+          tags?: string[]
+          team_id?: string | null
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          checklist?: Json
           completed_at?: string | null
           created_at?: string
           custom?: Json
@@ -813,8 +909,11 @@ export type Database = {
           project_id?: string | null
           scheduled_at?: string | null
           scheduled_end_at?: string | null
+          recurrence?: Json | null
           sort_order?: number
           status?: string
+          tags?: string[]
+          team_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -827,7 +926,144 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tasks_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      team_days: {
+        Row: {
+          bonus_at: string | null
+          date: string
+          team_id: string
+        }
+        Insert: {
+          bonus_at?: string | null
+          date: string
+          team_id: string
+        }
+        Update: {
+          bonus_at?: string | null
+          date?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_days_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          display_name: string
+          joined_at: string
+          role: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          display_name?: string
+          joined_at?: string
+          role?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          display_name?: string
+          joined_at?: string
+          role?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          accent: string
+          created_at: string
+          created_by: string
+          id: string
+          invite_code: string
+          name: string
+          notes: string
+        }
+        Insert: {
+          accent?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          invite_code?: string
+          name?: string
+          notes?: string
+        }
+        Update: {
+          accent?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          invite_code?: string
+          name?: string
+          notes?: string
+        }
+        Relationships: []
+      }
+      user_backgrounds: {
+        Row: {
+          avg_color: string
+          created_at: string
+          duration_s: number | null
+          height: number | null
+          id: string
+          kind: string
+          overlay: Json
+          path: string
+          size_bytes: number | null
+          user_id: string
+          width: number | null
+        }
+        Insert: {
+          avg_color?: string
+          created_at?: string
+          duration_s?: number | null
+          height?: number | null
+          id?: string
+          kind: string
+          overlay?: Json
+          path: string
+          size_bytes?: number | null
+          user_id: string
+          width?: number | null
+        }
+        Update: {
+          avg_color?: string
+          created_at?: string
+          duration_s?: number | null
+          height?: number | null
+          id?: string
+          kind?: string
+          overlay?: Json
+          path?: string
+          size_bytes?: number | null
+          user_id?: string
+          width?: number | null
+        }
+        Relationships: []
       }
       workout_entries: {
         Row: {
@@ -936,7 +1172,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_team_day: {
+        Args: { d: string; t: string }
+        Returns: Database["public"]["Tables"]["team_days"]["Row"]
+      }
+      create_team: {
+        Args: { member_name: string; team_name: string }
+        Returns: Database["public"]["Tables"]["teams"]["Row"]
+      }
+      is_team_member: { Args: { t: string }; Returns: boolean }
+      join_team: {
+        Args: { code: string; member_name: string }
+        Returns: Database["public"]["Tables"]["teams"]["Row"]
+      }
+      profile_count: { Args: Record<string, never>; Returns: number }
+      team_streak: { Args: { t: string }; Returns: number }
+      team_today: {
+        Args: { d: string; t: string }
+        Returns: {
+          display_name: string
+          priorities_done: number
+          priorities_total: number
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

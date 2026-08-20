@@ -1,16 +1,20 @@
 // Orbit service worker: offline shell + static asset caching.
 // Network-first for pages (fresh data matters), cache-first for static assets.
 
-const VERSION = "orbit-v1";
+const VERSION = "orbit-v2";
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const OFFLINE_URL = "/offline";
+// nav shells precached so the app opens instantly offline
+const PRECACHE_PAGES = [OFFLINE_URL, "/today", "/projects", "/calendar", "/sounds"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(PAGE_CACHE)
-      .then((cache) => cache.addAll([OFFLINE_URL]))
+      .then((cache) =>
+        Promise.allSettled(PRECACHE_PAGES.map((p) => cache.add(p))),
+      )
       .then(() => self.skipWaiting()),
   );
 });

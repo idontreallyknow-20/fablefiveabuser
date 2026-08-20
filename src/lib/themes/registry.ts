@@ -13,7 +13,11 @@ export type ThemeId =
   | "academia"
   | "ocean"
   | "luxe"
-  | "living-sky";
+  | "living-sky"
+  | "aurora-north"
+  | "rooftop-dawn"
+  | "desert-night"
+  | "sakura";
 
 export type MotionLevel = "low" | "balanced" | "cinematic";
 
@@ -33,7 +37,16 @@ export type EffectKind =
   | "branches"
   | "moon"
   | "lamp-glow"
-  | "sky-gradient";
+  | "sky-gradient"
+  | "aurora"
+  | "fireflies"
+  | "leaves"
+  | "sakura"
+  | "lightning"
+  | "waves"
+  | "light-rays"
+  | "grain"
+  | "dunes";
 
 export interface SceneLayerConfig {
   effect: EffectKind;
@@ -45,6 +58,8 @@ export interface SceneLayerConfig {
   weather?: WeatherGate[];
   /** render only during these day phases */
   phases?: DayPhase[];
+  /** theme-defining layer: ignores the weather gate when live weather is off */
+  signature?: boolean;
 }
 
 export type WeatherGate =
@@ -99,8 +114,8 @@ export const THEMES: Record<ThemeId, ThemeDef> = {
       { effect: "clouds", intensity: 0.5, depth: 0.1 },
       { effect: "city-lights", intensity: 0.85, depth: 0.25 },
       { effect: "fog", intensity: 0.35, depth: 0.45 },
-      { effect: "rain", intensity: 0.7, depth: 0.8 },
-      { effect: "droplets", intensity: 0.6, depth: 1 },
+      { effect: "rain", intensity: 0.7, depth: 0.8, weather: ["rain", "drizzle", "storm"], signature: true },
+      { effect: "droplets", intensity: 0.6, depth: 1, weather: ["rain", "drizzle", "storm"], signature: true },
     ],
     ambientFocus: "weather",
   },
@@ -233,6 +248,74 @@ export const THEMES: Record<ThemeId, ThemeDef> = {
     sky: { top: "#070708", mid: "#0a0a0b", horizon: "#0e0e10" },
     layers: [{ effect: "sky-gradient", intensity: 1, depth: 0 }],
     ambientFocus: "music",
+  },
+  "aurora-north": {
+    id: "aurora-north",
+    name: "Aurora North",
+    tagline: "Curtains of light over the tundra",
+    weatherReactive: true,
+    timeReactive: false,
+    sky: { top: "#030910", mid: "#07131c", horizon: "#0e2229" },
+    layers: [
+      { effect: "sky-gradient", intensity: 1, depth: 0 },
+      { effect: "stars", intensity: 0.8, depth: 0.15 },
+      { effect: "aurora", intensity: 0.9, depth: 0.25, signature: true },
+      { effect: "moon", intensity: 0.35, depth: 0.35 },
+      { effect: "snow", intensity: 0.5, depth: 0.7, weather: ["snow"] },
+      { effect: "grain", intensity: 0.5, depth: 1 },
+    ],
+    ambientFocus: "sky",
+  },
+  "rooftop-dawn": {
+    id: "rooftop-dawn",
+    name: "Rooftop Dawn",
+    tagline: "First light over the city",
+    weatherReactive: true,
+    timeReactive: true,
+    sky: { top: "#12131f", mid: "#26202c", horizon: "#4a3038" },
+    layers: [
+      { effect: "sky-gradient", intensity: 1, depth: 0 },
+      { effect: "clouds", intensity: 0.55, depth: 0.15 },
+      { effect: "light-rays", intensity: 0.7, depth: 0.2 },
+      { effect: "city-lights", intensity: 0.5, depth: 0.3 },
+      { effect: "rain", intensity: 0.45, depth: 0.7, weather: ["rain", "drizzle", "storm"] },
+      { effect: "dust", intensity: 0.2, depth: 0.9 },
+    ],
+    ambientFocus: "sky",
+  },
+  "desert-night": {
+    id: "desert-night",
+    name: "Desert Night",
+    tagline: "Cold sand under a huge sky",
+    weatherReactive: false,
+    timeReactive: true,
+    sky: { top: "#0a0714", mid: "#140e20", horizon: "#241631" },
+    layers: [
+      { effect: "sky-gradient", intensity: 1, depth: 0 },
+      { effect: "stars", intensity: 1, depth: 0.15 },
+      { effect: "shooting-stars", intensity: 0.5, depth: 0.2 },
+      { effect: "moon", intensity: 0.6, depth: 0.3 },
+      { effect: "dunes", intensity: 1, depth: 0.5 },
+      { effect: "dust", intensity: 0.35, depth: 0.8 },
+      { effect: "grain", intensity: 0.4, depth: 1 },
+    ],
+    ambientFocus: "sky",
+  },
+  sakura: {
+    id: "sakura",
+    name: "Sakura Twilight",
+    tagline: "Petals in the evening wind",
+    weatherReactive: true,
+    timeReactive: true,
+    sky: { top: "#140d16", mid: "#221523", horizon: "#3a2133" },
+    layers: [
+      { effect: "sky-gradient", intensity: 1, depth: 0 },
+      { effect: "moon", intensity: 0.45, depth: 0.2 },
+      { effect: "fog", intensity: 0.22, depth: 0.4 },
+      { effect: "sakura", intensity: 0.8, depth: 0.7, signature: true },
+      { effect: "fireflies", intensity: 0.4, depth: 0.85 },
+    ],
+    ambientFocus: "scene",
   },
   "living-sky": {
     id: "living-sky",

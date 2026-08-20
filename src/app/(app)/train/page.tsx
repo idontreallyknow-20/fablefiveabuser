@@ -9,8 +9,7 @@ export default function TrainPage() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <header className="rise mb-8 mt-[3vh]">
-        <p className="eyebrow mb-2">Train</p>
-        <h1 className="display text-[28px] text-ink">Strength, skills, recovery</h1>
+        <h1 className="display text-[28px] text-ink">Train</h1>
       </header>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">

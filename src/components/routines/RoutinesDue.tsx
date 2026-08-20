@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { useRoutines, useRoutineLogs, useLogRoutine } from "@/lib/data/routines";
 import { todayISO } from "@/lib/data/tasks";
 import { IconCheck } from "@/components/ui/Icons";
-import { useToast } from "@/components/ui/Toast";
 
 /**
  * Themed reset reminders: the next one or two routines due now, blended
@@ -15,7 +14,6 @@ export function RoutinesDue() {
   const date = todayISO();
   const { data: logs = [] } = useRoutineLogs(date);
   const log = useLogRoutine();
-  const { toast } = useToast();
 
   const due = useMemo(() => {
     const now = new Date();
@@ -39,21 +37,17 @@ export function RoutinesDue() {
       .slice(0, 2);
   }, [routines, logs]);
 
-  if (due.length === 0) return null;
-
   return (
-    <div className="surface p-4">
-      <p className="eyebrow mb-2.5">When you have a minute</p>
+    <div className="surface h-full p-4">
+      <p className="eyebrow mb-2.5">Routines</p>
+      {due.length === 0 && <p className="font-mono text-[12px] text-ink-faint">—</p>}
       <div className="flex flex-col gap-1.5">
         {due.map((r) => (
           <div key={r.id} className="flex items-center justify-between gap-3">
             <span className="text-sm text-ink-dim">{r.name}</span>
             <div className="flex items-center gap-1">
               <button
-                onClick={async () => {
-                  await log.mutateAsync({ routineId: r.id, status: "done" });
-                  toast("Nice reset", "success");
-                }}
+                onClick={() => log.mutateAsync({ routineId: r.id, status: "done" })}
                 aria-label={`Mark ${r.name} done`}
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-bg2 hover:text-ok"
               >

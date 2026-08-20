@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { IconSpotify } from "@/components/ui/Icons";
 import { useSpotifyStatus, useSpotifyPlayback } from "@/lib/spotify/useSpotify";
 import { PlayerControls } from "./PlayerControls";
-import { PlayerExpanded } from "./PlayerExpanded";
 import { WebPlayer } from "./WebPlayer";
 
 /**
@@ -16,36 +14,20 @@ import { WebPlayer } from "./WebPlayer";
 export function PlayerCard() {
   const { data: status } = useSpotifyStatus();
   const playback = useSpotifyPlayback(Boolean(status?.connected));
-  const [expanded, setExpanded] = useState(false);
+  const router = useRouter();
 
   if (!status) {
     return <div className="surface h-[104px] animate-pulse" aria-hidden />;
   }
 
-  if (!status.configured) {
-    return (
-      <div className="surface flex items-center gap-3.5 p-4">
-        <IconSpotify size={20} className="shrink-0 text-ink-faint" />
-        <div className="min-w-0">
-          <p className="text-sm text-ink-dim">Spotify is not set up yet</p>
-          <p className="text-[12.5px] text-ink-faint">
-            Add the API keys in Vercel, then connect in{" "}
-            <Link href="/space/connections" className="text-accent hover:underline">
-              Space
-            </Link>
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Unconfigured installs hide the widget entirely — setup lives in
+  // /space/connections, not on the dashboard.
+  if (!status.configured) return null;
 
   if (!status.connected) {
     return (
       <div className="surface flex items-center justify-between gap-3 p-4">
-        <div className="flex items-center gap-3.5">
-          <IconSpotify size={20} className="shrink-0 text-ink-faint" />
-          <p className="text-sm text-ink-dim">Connect Spotify to play music here</p>
-        </div>
+        <IconSpotify size={20} className="shrink-0 text-ink-faint" />
         <a
           href="/api/spotify/auth"
           className="shrink-0 rounded-xl border border-(--accent)/35 bg-accent-soft px-3.5 py-2 text-[13px] font-medium text-accent transition-colors hover:bg-(--accent)/22"
@@ -65,14 +47,14 @@ export function PlayerCard() {
         className="flex cursor-pointer items-center gap-3.5"
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("button")) return;
-          setExpanded(true);
+          router.push("/music");
         }}
-        role="button"
+        role="link"
         tabIndex={0}
         onKeyDown={(e) => {
-          if (e.key === "Enter") setExpanded(true);
+          if (e.key === "Enter") router.push("/music");
         }}
-        aria-label="Open the full player"
+        aria-label="Open the music page"
       >
         {track?.albumArt ? (
           // eslint-disable-next-line @next/next/no-img-element -- Spotify CDN artwork must be hotlinked per their terms
@@ -112,7 +94,6 @@ export function PlayerCard() {
           </div>
         </div>
       )}
-      <PlayerExpanded open={expanded} onClose={() => setExpanded(false)} playback={playback} />
     </div>
   );
 }

@@ -36,6 +36,12 @@ const TABLES = [
   "integration_accounts",
   "integration_secrets",
   "calendar_events",
+  "teams",
+  "team_members",
+  "team_days",
+  "soundboard_pads",
+  "user_backgrounds",
+  "meals",
   "calendar_links",
   "notification_prefs",
   "notification_log",
@@ -282,6 +288,14 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   if (req.method === "OPTIONS") return json(res, 204, {});
 
+  // test-only: wipe all state so e2e runs start clean
+  if (url.pathname === "/__reset" && req.method === "POST") {
+    users.clear();
+    sessions.clear();
+    for (const t of TABLES) tables.set(t, []);
+    return json(res, 200, { reset: true });
+  }
+
   // ---- auth ----
   if (url.pathname === "/auth/v1/signup" && req.method === "POST") {
     const body = await readBody(req);
@@ -337,14 +351,116 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, tables.get("profiles").length);
   }
 
+  if (url.pathname.startsWith("/rest/v1/rpc/")) {
+    const fn = url.pathname.slice("/rest/v1/rpc/".length);
+    const user = bearerUser(req);
+    if (!user) return json(res, 401, { message: "not signed in" });
+    const body = await readBody(req);
+    const teams = tables.get("teams");
+    const members = tables.get("team_members");
+    const days = tables.get("team_days");
+    const isMember = (t) => members.some((m) => m.team_id === t && m.user_id === user.id);
+
+    if (fn === "create_team") {
+      const team = {
+        id: crypto.randomUUID(),
+        name: body.team_name ?? "",
+        accent: "",
+        notes: "",
+        invite_code: Math.random().toString(36).slice(2, 10),
+        created_by: user.id,
+        created_at: nowIso(),
+      };
+      teams.push(team);
+      members.push({
+        team_id: team.id, user_id: user.id, role: "owner",
+        display_name: body.member_name ?? "", joined_at: nowIso(),
+      });
+      return json(res, 200, team);
+    }
+    if (fn === "join_team") {
+      const team = teams.find((t) => t.invite_code === body.code);
+      if (!team) return json(res, 400, { message: "invalid code" });
+      if (!members.some((m) => m.team_id === team.id && m.user_id === user.id)) {
+        members.push({
+          team_id: team.id, user_id: user.id, role: "member",
+          display_name: body.member_name ?? "", joined_at: nowIso(),
+        });
+      }
+      return json(res, 200, team);
+    }
+    if (fn === "team_today") {
+      if (!isMember(body.t)) return json(res, 400, { message: "not a member" });
+      const out = members
+        .filter((m) => m.team_id === body.t)
+        .map((m) => {
+          const pri = tables.get("tasks").filter(
+            (k) => k.user_id === m.user_id && k.priority_date === body.d && k.priority_slot != null,
+          );
+          return {
+            user_id: m.user_id,
+            display_name: m.display_name,
+            priorities_total: pri.length,
+            priorities_done: pri.filter((k) => k.completed_at).length,
+          };
+        });
+      return json(res, 200, out);
+    }
+    if (fn === "team_streak") {
+      if (!isMember(body.t)) return json(res, 400, { message: "not a member" });
+      const dates = new Set(days.filter((x) => x.team_id === body.t && x.bonus_at).map((x) => x.date));
+      let streak = 0;
+      const cursor = new Date();
+      if (!dates.has(cursor.toISOString().slice(0, 10))) cursor.setDate(cursor.getDate() - 1);
+      while (dates.has(cursor.toISOString().slice(0, 10))) {
+        streak += 1;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+      return json(res, 200, streak);
+    }
+    if (fn === "claim_team_day") {
+      if (!isMember(body.t)) return json(res, 400, { message: "not a member" });
+      const summary = members
+        .filter((m) => m.team_id === body.t)
+        .map((m) => {
+          const pri = tables.get("tasks").filter(
+            (k) => k.user_id === m.user_id && k.priority_date === body.d && k.priority_slot != null,
+          );
+          return { total: pri.length, done: pri.filter((k) => k.completed_at).length };
+        });
+      if (summary.some((s) => s.total === 0 || s.done < s.total)) {
+        return json(res, 400, { message: "not aligned yet" });
+      }
+      let row = days.find((x) => x.team_id === body.t && x.date === body.d);
+      if (!row) {
+        row = { team_id: body.t, date: body.d, bonus_at: nowIso() };
+        days.push(row);
+      } else if (!row.bonus_at) {
+        row.bonus_at = nowIso();
+      }
+      return json(res, 200, row);
+    }
+    return json(res, 404, { message: `rpc ${fn} not implemented in mock` });
+  }
+
   // ---- rest ----
   const restMatch = url.pathname.match(/^\/rest\/v1\/(\w+)$/);
   if (restMatch) {
     const tableName = restMatch[1];
     if (!tables.has(tableName)) return json(res, 404, { message: `table ${tableName} not found` });
     const user = bearerUser(req);
-    // emulate RLS: only rows owned by the caller
-    const owns = (r) => user && (r.user_id === user.id || r.id === user.id && tableName === "profiles");
+    // emulate RLS: own rows, plus team visibility where policies allow it
+    const myTeams = user
+      ? new Set(tables.get("team_members").filter((m) => m.user_id === user.id).map((m) => m.team_id))
+      : new Set();
+    const owns = (r) => {
+      if (!user) return false;
+      if (tableName === "profiles") return r.id === user.id;
+      if (tableName === "teams") return myTeams.has(r.id);
+      if (tableName === "team_members" || tableName === "team_days") return myTeams.has(r.team_id);
+      if (tableName === "tasks") return r.user_id === user.id || (r.team_id && myTeams.has(r.team_id));
+      return r.user_id === user.id;
+    };
     const rows = tables.get(tableName);
     const single = (req.headers.accept ?? "").includes("vnd.pgrst.object");
 
@@ -432,12 +548,36 @@ function defaultsFor(tableName) {
       return { slug: null, category: "reset", schedule: { times: [], days: [0, 1, 2, 3, 4, 5, 6] }, enabled: true, sort_order: 0 };
     case "routine_logs":
       return { status: "done", at: nowIso() };
+    case "teams":
+      return { name: "", accent: "", notes: "", invite_code: Math.random().toString(36).slice(2, 10) };
     case "displays":
       return { name: "Display", role: "command", theme: null, variant: null, motion: "balanced", brightness: 1, density: "comfortable", ambient: {}, layout: {}, last_seen_at: null };
     default:
       return {};
   }
 }
+
+// Accept realtime websocket upgrades so the browser client doesn't spam
+// console errors; frames are read and dropped (no realtime in the mock).
+server.on("upgrade", (req, socket) => {
+  const key = req.headers["sec-websocket-key"];
+  if (!key || !req.url?.startsWith("/realtime/")) {
+    socket.destroy();
+    return;
+  }
+  const accept = crypto
+    .createHash("sha1")
+    .update(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11")
+    .digest("base64");
+  socket.write(
+    "HTTP/1.1 101 Switching Protocols\r\n" +
+      "Upgrade: websocket\r\n" +
+      "Connection: Upgrade\r\n" +
+      `Sec-WebSocket-Accept: ${accept}\r\n\r\n`,
+  );
+  socket.on("data", () => {});
+  socket.on("error", () => {});
+});
 
 server.listen(PORT, () => {
   console.log(`mock supabase listening on :${PORT}`);

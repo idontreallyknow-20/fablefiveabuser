@@ -4,10 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { AtmosphereCanvas } from "@/components/atmosphere/AtmosphereCanvas";
+import { BackdropMedia } from "@/components/atmosphere/BackdropMedia";
 import {
   IconAmbient,
+  IconCalendar,
+  IconInsights,
   IconProjects,
   IconReflect,
+  IconSound,
   IconSpace,
   IconToday,
   IconTrain,
@@ -17,12 +21,18 @@ import { useProfile } from "@/lib/data/profile";
 import { PinGate } from "@/components/shell/PinGate";
 import { AutoTheme } from "@/components/shell/AutoTheme";
 import { NotificationEngine } from "@/components/shell/NotificationEngine";
+import { OutboxDot } from "@/components/shell/OutboxDot";
+import { CommandPalette } from "@/components/shell/CommandPalette";
+import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 
 const NAV = [
   { href: "/today", label: "Today", icon: IconToday },
   { href: "/projects", label: "Projects", icon: IconProjects },
-  { href: "/train", label: "Train", icon: IconTrain },
-  { href: "/reflect", label: "Reflect", icon: IconReflect },
+  { href: "/calendar", label: "Calendar", icon: IconCalendar },
+  { href: "/insights", label: "Insights", icon: IconInsights, desktopOnly: true },
+  { href: "/train", label: "Train", icon: IconTrain, module: "train" },
+  { href: "/reflect", label: "Reflect", icon: IconReflect, module: "reflect" },
+  { href: "/sounds", label: "Sounds", icon: IconSound, module: "sounds" },
   { href: "/space", label: "Space", icon: IconSpace },
 ] as const;
 
@@ -52,21 +62,46 @@ function useIdleAmbient() {
   }, [ambient.autoAfterMin, pathname, router]);
 }
 
+/** `c` anywhere (outside inputs) opens quick capture */
+function useCaptureKey() {
+  const router = useRouter();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "c" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      e.preventDefault();
+      router.push("/capture");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [router]);
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: profile } = useProfile();
+  const modules = useSettings((s) => s.settings.modules);
   useIdleAmbient();
+  useCaptureKey();
 
+  const nav = NAV.filter(
+    (item) => !("module" in item) || modules[item.module as keyof typeof modules],
+  );
   const appName = profile?.app_name || "Orbit";
   const immersive = pathname === "/ambient" || pathname === "/focus" || pathname.startsWith("/display");
 
   if (immersive) {
     return (
       <div className="relative min-h-dvh">
+        <BackdropMedia />
         <AtmosphereCanvas />
         <AutoTheme />
         <NotificationEngine />
         <PinGate />
+        <OutboxDot />
+        <CommandPalette />
+        <AssistantPanel />
         {children}
       </div>
     );
@@ -74,9 +109,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative min-h-dvh">
+      <BackdropMedia />
       <AtmosphereCanvas />
       <AutoTheme />
       <PinGate />
+      <OutboxDot />
+      <CommandPalette />
+      <AssistantPanel />
 
       {/* desktop rail */}
       <nav
@@ -90,7 +129,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {appName.slice(0, 1)}
         </Link>
         <div className="flex flex-1 flex-col gap-1.5">
-          {NAV.map(({ href, label, icon: Icon }) => {
+          {nav.map(({ href, label, icon: Icon }) => {
             const active = pathname.startsWith(href);
             return (
               <Link
@@ -119,29 +158,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Link>
       </nav>
 
-      {/* mobile tab bar */}
+      {/* mobile tab bar — icon-only so every module fits without clipping */}
       <nav
         aria-label="Primary"
-        className="floating fixed inset-x-3 bottom-3 z-40 flex items-center justify-around rounded-2xl px-1 py-1.5 md:hidden"
-        style={{ paddingBottom: "max(6px, env(safe-area-inset-bottom))" }}
+        className="floating fixed inset-x-4 bottom-3 z-40 flex items-center rounded-[22px] px-1.5 py-1 md:hidden"
+        style={{ paddingBottom: "max(4px, env(safe-area-inset-bottom))" }}
       >
-        {NAV.map(({ href, label, icon: Icon }) => {
-          const active = pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={[
-                "flex min-w-14 flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 transition-colors duration-[var(--dur-base)]",
-                active ? "text-accent" : "text-ink-faint",
-              ].join(" ")}
-            >
-              <Icon size={19} />
-              <span className="text-[10px] font-medium">{label}</span>
-            </Link>
-          );
-        })}
+        {nav
+          .filter((item) => !("desktopOnly" in item && item.desktopOnly))
+          .map(({ href, label, icon: Icon }) => {
+            const active = pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-label={label}
+                aria-current={active ? "page" : undefined}
+                className={[
+                  "relative flex h-12 flex-1 flex-col items-center justify-center rounded-2xl transition-colors duration-[var(--dur-base)]",
+                  active ? "text-accent" : "text-ink-faint active:text-ink-dim",
+                ].join(" ")}
+              >
+                <Icon size={21} />
+                <span
+                  aria-hidden
+                  className={[
+                    "absolute bottom-1.5 h-1 w-1 rounded-full bg-accent transition-opacity duration-[var(--dur-base)]",
+                    active ? "opacity-100" : "opacity-0",
+                  ].join(" ")}
+                />
+              </Link>
+            );
+          })}
       </nav>
 
       <main className="relative z-10 min-h-dvh px-4 pb-28 pt-6 md:pb-10 md:pl-[104px] md:pr-8 md:pt-8">

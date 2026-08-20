@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   const oauthError = url.searchParams.get("error");
   if (oauthError) {
     return redirectTo({
-      error:
+      spotify_error:
         oauthError === "access_denied"
           ? "Spotify connection was cancelled."
           : "Spotify sign-in failed. Please try again.",
@@ -39,21 +39,21 @@ export async function GET(request: NextRequest) {
   const state = url.searchParams.get("state");
   const cookieState = request.cookies.get(STATE_COOKIE)?.value;
   if (!code || !state || !cookieState || state !== cookieState) {
-    return redirectTo({ error: "Sign-in state did not match. Please try connecting again." });
+    return redirectTo({ spotify_error: "Sign-in state did not match. Please try connecting again." });
   }
 
   if (!integrationStatus.spotify) {
-    return redirectTo({ error: "Spotify is not configured on the server yet." });
+    return redirectTo({ spotify_error: "Spotify is not configured on the server yet." });
   }
 
   const supabase = await supabaseServer();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return redirectTo({ error: "You need to be signed in to connect Spotify." });
+  if (!user) return redirectTo({ spotify_error: "You need to be signed in to connect Spotify." });
 
   const db = supabaseAdmin();
-  if (!db) return redirectTo({ error: "Server integrations are not configured yet." });
+  if (!db) return redirectTo({ spotify_error: "Server integrations are not configured yet." });
 
   try {
     const tokens = await exchangeSpotifyCode(code);
@@ -139,6 +139,6 @@ export async function GET(request: NextRequest) {
     return redirectTo({ connected: "spotify" });
   } catch (e) {
     console.error("[spotify callback]", e);
-    return redirectTo({ error: "Could not finish connecting Spotify. Please try again." });
+    return redirectTo({ spotify_error: "Could not finish connecting Spotify. Please try again." });
   }
 }

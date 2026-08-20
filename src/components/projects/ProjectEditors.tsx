@@ -8,6 +8,58 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { IconCheck, IconPlus, IconTrash } from "@/components/ui/Icons";
+import { PALETTE, withAlpha } from "@/lib/colors";
+
+/* ---------------------------------------------------------------------------
+   Project color: projects.color text, one of the shared dusty palette hexes
+--------------------------------------------------------------------------- */
+
+export function ProjectColorPicker({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (color: string | null) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label="Project color" className="flex flex-wrap items-center gap-1.5">
+      <button
+        type="button"
+        role="radio"
+        aria-checked={value === null}
+        aria-label="No color"
+        onClick={() => onChange(null)}
+        className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border border-line-strong text-ink-faint transition-colors hover:text-ink-dim"
+        style={
+          value === null
+            ? { boxShadow: "0 0 0 2px var(--bg1), 0 0 0 3.5px var(--ink-faint)" }
+            : undefined
+        }
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
+          <path d="M1.5 8.5l7-7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      </button>
+      {PALETTE.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          role="radio"
+          aria-checked={value === c.hex}
+          aria-label={c.id}
+          onClick={() => onChange(c.hex)}
+          className="h-[18px] w-[18px] shrink-0 rounded-full transition-transform hover:scale-110"
+          style={{
+            backgroundColor: withAlpha(c.hex, 0.85),
+            ...(value === c.hex
+              ? { boxShadow: `0 0 0 2px var(--bg1), 0 0 0 3.5px ${withAlpha(c.hex, 0.75)}` }
+              : {}),
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 /* ---------------------------------------------------------------------------
    Milestones: projects.milestones jsonb, [{ title, due, done }]

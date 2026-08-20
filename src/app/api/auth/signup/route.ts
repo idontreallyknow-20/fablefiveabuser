@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 /**
  * Signup gate. Registration is allowed when PUBLIC_SIGNUPS_ENABLED=true, or
@@ -41,6 +42,22 @@ export async function POST(req: NextRequest) {
         { status: 403 },
       );
     }
+  }
+
+  // with the service role available, create the account pre-confirmed so no
+  // confirmation email is needed; otherwise fall back to the standard flow
+  const admin = supabaseAdmin();
+  if (admin) {
+    const { error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { display_name: displayName },
+    });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ needsConfirmation: false });
   }
 
   const { data, error } = await anon.auth.signUp({

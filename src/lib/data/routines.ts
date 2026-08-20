@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Tables, TablesInsert, TablesUpdate } from "@/lib/db/types";
+import { runOrQueue } from "@/lib/offline/outbox";
 
 export type Routine = Tables<"routines">;
 export type RoutineLog = Tables<"routine_logs">;
@@ -71,10 +72,16 @@ export function useLogRoutine() {
     }) => {
       const supabase = supabaseBrowser();
       const uid = await userId();
-      const { error } = await supabase
-        .from("routine_logs")
-        .insert({ routine_id: routineId, status, user_id: uid });
-      if (error) throw error;
+      const row = {
+        routine_id: routineId,
+        status,
+        user_id: uid,
+        date: new Date().toISOString().slice(0, 10),
+      };
+      await runOrQueue({ table: "routine_logs", op: "insert", payload: row }, async () => {
+        const { error } = await supabase.from("routine_logs").insert(row);
+        if (error) throw error;
+      });
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["routine_logs"] }),
   });

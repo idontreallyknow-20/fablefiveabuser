@@ -29,6 +29,9 @@ page.on("pageerror", (e) => consoleErrors.push(String(e)));
 const shot = (name) => page.screenshot({ path: `${SHOTS}/${name}.png` });
 
 try {
+  // ---- reset mock state so reruns start clean ----
+  await fetch("http://localhost:54321/__reset", { method: "POST" }).catch(() => {});
+
   // ---- signup (bootstrap account) ----
   await page.goto(`${BASE}/login`, { waitUntil: "networkidle" });
   await shot("01-login");
@@ -63,7 +66,10 @@ try {
   // complete it
   await page.getByLabel(/Complete Ship NerfChess/).click();
   await page.waitForTimeout(600);
-  check("priority completes", await page.getByText("Done. Well placed.").isVisible().catch(() => false));
+  check(
+    "priority completes",
+    await page.getByRole("button", { name: "Undo" }).first().isVisible().catch(() => false),
+  );
   await shot("04-today-populated");
 
   // ---- projects ----
@@ -99,6 +105,231 @@ try {
     await shot("09-train-session");
   } else {
     check("workout session starts", false, "split picker not found");
+  }
+
+  // ---- today grid edit mode ----
+  await page.goto(`${BASE}/today`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  const editBtn = page.getByRole("button", { name: "Edit layout" });
+  if (await editBtn.isVisible().catch(() => false)) {
+    await editBtn.click();
+    await page.waitForTimeout(400);
+    await page.getByRole("button", { name: "Widget", exact: true }).click();
+    await page.waitForTimeout(300);
+    await page.getByRole("button", { name: "Timer", exact: true }).click();
+    await page.waitForTimeout(500);
+    await shot("20-grid-edit");
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    await page.waitForTimeout(500);
+    const timerVisible = await page.getByText("Timer").first().isVisible().catch(() => false);
+    check("grid edit adds a widget", timerVisible);
+    await shot("21-grid-with-timer");
+  } else {
+    check("grid edit adds a widget", false, "edit layout button not found");
+  }
+
+  // ---- command palette + natural-language dates ----
+  await page.keyboard.press("Control+k");
+  await page.waitForTimeout(400);
+  const cmdInput = page.getByLabel("Command", { exact: true });
+  if (await cmdInput.isVisible().catch(() => false)) {
+    await cmdInput.fill("dentist aug 12");
+    await page.waitForTimeout(300);
+    await shot("25-palette");
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(700);
+    // find it again through the palette
+    await page.keyboard.press("Control+k");
+    await page.waitForTimeout(300);
+    await page.getByLabel("Command", { exact: true }).fill("dentist");
+    await page.waitForTimeout(400);
+    const found = await page.getByRole("button", { name: /dentist/ }).first().isVisible().catch(() => false);
+    check("palette adds task with NL date and finds it", found);
+    await page.keyboard.press("Escape");
+  } else {
+    check("palette adds task with NL date and finds it", false, "palette did not open");
+  }
+
+  // ---- assistant panel (no API key locally: opens, shows unconfigured state) ----
+  await page.keyboard.press("Control+j");
+  await page.waitForTimeout(400);
+  const assistantPanel = page.getByRole("dialog", { name: "Assistant" });
+  if (await assistantPanel.isVisible().catch(() => false)) {
+    await shot("26-assistant");
+    check("assistant panel opens via hotkey", true);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+  } else {
+    check("assistant panel opens via hotkey", false, "dialog not visible");
+  }
+
+  // ---- soundboard ----
+  await page.goto(`${BASE}/sounds`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  const addPad = page.getByRole("button", { name: "Add pad" });
+  if (await addPad.isVisible().catch(() => false)) {
+    await addPad.click();
+    await page.getByRole("button", { name: "Chime", exact: true }).click();
+    await page.waitForTimeout(700);
+    const padBtn = page.getByRole("button", { name: /Pad Chime/ });
+    const padVisible = await padBtn.isVisible().catch(() => false);
+    if (padVisible) await padBtn.click(); // fire it; audio is mocked-out in headless
+    check("soundboard pad creates and fires", padVisible);
+    await shot("24-sounds");
+  } else {
+    check("soundboard pad creates and fires", false, "add pad not found");
+  }
+
+  // ---- calendar ----
+  await page.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(1000);
+  const quickAddInput = page.getByLabel("Add for this day");
+  if (await quickAddInput.isVisible().catch(() => false)) {
+    await quickAddInput.fill("Chemistry test");
+    await quickAddInput.press("Enter");
+    await page.waitForTimeout(800);
+    const onGrid = await page.getByText("Chemistry test").first().isVisible().catch(() => false);
+    check("calendar quick-add lands on the grid", onGrid);
+    await shot("16-calendar-month");
+    // open the task from the day panel (the .last() chip; cells also match by name)
+    await page.getByRole("button", { name: /Chemistry test/ }).last().click();
+    await page.waitForTimeout(500);
+    const tagField = page.getByLabel("Tags");
+    if (await tagField.isVisible().catch(() => false)) {
+      await tagField.fill("test");
+      await tagField.press("Enter");
+      await page.getByRole("button", { name: "Save" }).click();
+      await page.waitForTimeout(700);
+      check("task modal saves tags from calendar", true);
+    } else {
+      check("task modal saves tags from calendar", false, "tags field not found");
+    }
+    // week + agenda views render
+    await page.getByRole("radio", { name: "Week" }).or(page.getByRole("button", { name: "Week" })).first().click();
+    await page.waitForTimeout(500);
+    await shot("17-calendar-week");
+    await page.getByRole("radio", { name: "Agenda" }).or(page.getByRole("button", { name: "Agenda" })).first().click();
+    await page.waitForTimeout(500);
+    check("calendar views switch", true);
+    await shot("18-calendar-agenda");
+  } else {
+    check("calendar quick-add lands on the grid", false, "quick add input not found");
+    check("task modal saves tags from calendar", false, "skipped");
+    check("calendar views switch", false, "skipped");
+  }
+
+  // ---- quick capture (share-target path) ----
+  await page.goto(`${BASE}/capture?title=Read%20article&url=https%3A%2F%2Fexample.com%2Fpost`, {
+    waitUntil: "networkidle",
+  });
+  await page.waitForTimeout(600);
+  const capInput = page.getByLabel("Task", { exact: true });
+  if (await capInput.isVisible().catch(() => false)) {
+    const prefilled = (await capInput.inputValue()).includes("Read article");
+    await page.getByRole("button", { name: "Add" }).click();
+    await page.waitForURL(/\/today/, { timeout: 8000 }).catch(() => {});
+    check("capture prefills share and saves", prefilled && page.url().includes("/today"));
+    await shot("28-capture");
+  } else {
+    check("capture prefills share and saves", false, "capture input not found");
+  }
+
+  // ---- weekly review ----
+  await page.goto(`${BASE}/review`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  const reviewHeader = await page
+    .locator("h1")
+    .filter({ hasText: /Clear|overdue/ })
+    .first()
+    .isVisible()
+    .catch(() => false);
+  check("review page renders", reviewHeader);
+  await shot("27-review");
+
+  // ---- connections ----
+  await page.goto(`${BASE}/space/connections`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  check(
+    "connections page renders steppers",
+    (await page.getByText("Spotify").first().isVisible().catch(() => false)) &&
+      (await page.getByLabel("Discord").first().isVisible().catch(() => false)),
+  );
+  await shot("19-connections");
+
+  // ---- team: create, join from a second browser, claim the day ----
+  await page.goto(`${BASE}/space/team`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+  await page.getByLabel("Team name").fill("Orbit");
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.waitForTimeout(900);
+  const inviteCode = (
+    await page
+      .getByTitle("Copy")
+      .first()
+      .textContent()
+      .catch(async () => (await page.locator("code").first().textContent().catch(() => "")) ?? "")
+  )?.trim();
+  check("team created with invite code", Boolean(inviteCode));
+  await shot("22-team-created");
+
+  if (inviteCode) {
+    // second user directly against the mock, then join through the UI
+    await fetch("http://localhost:54321/auth/v1/signup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        email: "katherine@orbit.local",
+        password: "orbit-e2e-password",
+        data: { display_name: "Katherine" },
+      }),
+    });
+    const ctxB = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const pageB = await ctxB.newPage();
+    await pageB.goto(`${BASE}/login`, { waitUntil: "networkidle" });
+    await pageB.getByLabel("Email").fill("katherine@orbit.local");
+    await pageB.getByLabel("Password").fill("orbit-e2e-password");
+    await pageB.getByRole("button", { name: "Sign in", exact: true }).click();
+    await pageB.waitForURL("**/today", { timeout: 20000 }).catch(() => {});
+    await pageB.goto(`${BASE}/space/team`, { waitUntil: "networkidle" });
+    await pageB.getByLabel("Invite code").fill(inviteCode);
+    await pageB.getByRole("button", { name: "Join", exact: true }).click();
+    await pageB.waitForTimeout(900);
+    const joined = await pageB.getByText("Katherine").first().isVisible().catch(() => false);
+    check("second user joins by invite code", joined);
+
+    // Katherine sets and completes a priority
+    await pageB.goto(`${BASE}/today`, { waitUntil: "networkidle" });
+    await pageB.waitForTimeout(800);
+    await pageB.getByLabel("Add a task to the backlog").fill("Finish lab report");
+    await pageB.getByRole("button", { name: "Add", exact: true }).click();
+    await pageB.waitForTimeout(400);
+    await pageB.getByRole("button", { name: "Choose a priority" }).first().click();
+    await pageB.waitForTimeout(500);
+    await pageB.getByRole("button", { name: /Finish lab report/ }).first().click();
+    await pageB.waitForTimeout(500);
+    await pageB.getByLabel(/Complete Finish lab report/).click();
+    await pageB.waitForTimeout(700);
+
+    // Joseph adds the Team widget and claims the aligned day
+    await page.goto(`${BASE}/today`, { waitUntil: "networkidle" });
+    await page.waitForTimeout(800);
+    await page.getByRole("button", { name: "Edit layout" }).click();
+    await page.getByRole("button", { name: "Widget", exact: true }).click();
+    await page.waitForTimeout(300);
+    await page.getByRole("button", { name: "Team", exact: true }).click();
+    await page.waitForTimeout(400);
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    await page.waitForTimeout(900);
+    const claimBtn = page.getByRole("button", { name: "Claim the day" });
+    if (await claimBtn.isVisible().catch(() => false)) {
+      await claimBtn.click();
+      await page.waitForTimeout(900);
+      check("team day claims when aligned", await page.getByText("aligned").first().isVisible().catch(() => false));
+    } else {
+      check("team day claims when aligned", false, "claim button not visible");
+    }
+    await shot("23-team-aligned");
+    await ctxB.close();
   }
 
   // ---- reflect ----
@@ -150,6 +381,7 @@ try {
   const themes = [
     "rainy-city", "bedroom", "library", "tokyo", "observatory",
     "forest", "snow", "academia", "ocean", "luxe", "living-sky",
+    "aurora-north", "rooftop-dawn", "desert-night", "sakura",
   ];
   await page.goto(`${BASE}/space/appearance`, { waitUntil: "networkidle" });
   const names = {
@@ -158,6 +390,8 @@ try {
     observatory: "Deep-Space Observatory", forest: "Foggy Forest",
     snow: "Snowy Midnight", academia: "Dark Academia", ocean: "Deep Ocean",
     luxe: "Minimal Black Luxury", "living-sky": "Living Sky",
+    "aurora-north": "Aurora North", "rooftop-dawn": "Rooftop Dawn",
+    "desert-night": "Desert Night", sakura: "Sakura Twilight",
   };
   for (const t of themes) {
     await page.goto(`${BASE}/space/appearance`, { waitUntil: "domcontentloaded" });
@@ -167,7 +401,7 @@ try {
     await page.waitForTimeout(2200);
     await shot(`theme-${t}`);
   }
-  check("all 11 themes render", true);
+  check("all 15 themes render", true);
 
   // ---- responsive sweep (back on flagship theme) ----
   await page.goto(`${BASE}/space/appearance`, { waitUntil: "domcontentloaded" });

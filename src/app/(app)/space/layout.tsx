@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const SECTIONS = [
+  { href: "/space", label: "All" },
   { href: "/space/appearance", label: "Appearance" },
   { href: "/space/displays", label: "Displays" },
   { href: "/space/connections", label: "Connections" },
+  { href: "/space/team", label: "Team" },
   { href: "/space/notifications", label: "Notifications" },
   { href: "/space/routines", label: "Routines" },
   { href: "/space/guide", label: "Guide" },
@@ -20,11 +22,11 @@ export default function SpaceLayout({ children }: { children: React.ReactNode })
     <div className="mx-auto max-w-4xl">
       <header className="rise mb-8">
         <h1 className="display text-3xl font-light text-ink">Space</h1>
-        <p className="mt-1 text-sm text-ink-faint">The room behind the room</p>
       </header>
       <nav aria-label="Settings sections" className="rise mb-8 flex flex-wrap gap-1.5" style={{ "--stagger-i": 1 } as React.CSSProperties}>
         {SECTIONS.map((s) => {
-          const active = pathname.startsWith(s.href);
+          const active =
+            s.href === "/space" ? pathname === "/space" : pathname.startsWith(s.href);
           return (
             <Link
               key={s.href}
