@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Clock } from "@/components/today/Clock";
 import { WeatherChip } from "@/components/today/WeatherChip";
-import { nextEventOf, useCalendarStatus, useTodayEvents } from "@/components/calendar/TodayEvents";
+import { nextItemOf, useTodayAgenda } from "@/components/calendar/TodayEvents";
 import { IconAmbient, IconFocus } from "@/components/ui/Icons";
 import { useSettings } from "@/lib/settings/store";
 import { presetById } from "@/lib/settings/layout";
@@ -13,22 +13,14 @@ import { EditBar } from "@/components/grid/EditBar";
 import type { TodayLayout } from "@/lib/widgets/types";
 
 function NextEventMeta() {
-  const { data: status } = useCalendarStatus();
-  const { data } = useTodayEvents(Boolean(status?.connected));
-  const timezone = useSettings((s) => s.settings.location.timezone);
-  const next = data ? nextEventOf(data.events) : null;
-  if (!next?.startsAt) return null;
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: timezone,
-  });
+  const { items } = useTodayAgenda();
+  const next = nextItemOf(items.filter((i) => i.kind === "task"));
+  if (!next?.time) return null;
   return (
     <span className="tnum inline-flex items-center gap-1.5">
       <span aria-hidden className="text-ink-faint">·</span>
       <span>
-        {fmt.format(new Date(next.startsAt))} {next.title}
+        {next.time} {next.title}
       </span>
     </span>
   );
@@ -44,6 +36,7 @@ export default function TodayPage() {
 
   return (
     <div className="flex min-h-[calc(100dvh-8rem)] flex-col">
+      <h1 className="sr-only">Today</h1>
       <header className="rise mb-8 mt-[4vh] flex flex-wrap items-end justify-between gap-6 md:mt-[5vh]">
         <Clock
           size="hero"

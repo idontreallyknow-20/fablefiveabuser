@@ -464,11 +464,6 @@ export default function AppearancePage() {
             onChange={(timeReactive) => set({ timeReactive })}
             label="Live daylight"
           />
-          <Toggle
-            checked={settings.albumGlow}
-            onChange={(albumGlow) => set({ albumGlow })}
-            label="Album light"
-          />
           <div className="mt-3 grid grid-cols-1 gap-3 border-t border-line pt-4">
             <label className="flex flex-col gap-1.5">
               <span className="text-[13px] font-medium text-ink-dim">Weather override</span>

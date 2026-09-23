@@ -56,7 +56,6 @@ export const SETTINGS_REGISTRY: SettingDef[] = [
   // scene
   { id: "weather-reactive", label: "Live weather", section: "Scene", path: "weatherReactive", control: { kind: "toggle" }, keywords: "rain snow sync" },
   { id: "time-reactive", label: "Live daylight", section: "Scene", path: "timeReactive", control: { kind: "toggle" }, keywords: "sunrise sunset phase" },
-  { id: "album-glow", label: "Album light", section: "Scene", path: "albumGlow", control: { kind: "toggle" }, keywords: "spotify music color" },
   { id: "adaptive-perf", label: "Adaptive performance", section: "Scene", path: "adaptivePerf", control: { kind: "toggle" }, keywords: "fps slow speed" },
   {
     id: "motion",
@@ -132,7 +131,6 @@ export const SETTINGS_REGISTRY: SettingDef[] = [
   { id: "module-train", label: "Train", section: "Modules", path: "modules.train", control: { kind: "toggle" }, keywords: "workout gym fitness" },
   { id: "module-reflect", label: "Reflect", section: "Modules", path: "modules.reflect", control: { kind: "toggle" }, keywords: "selfcare journal checkin skincare" },
   { id: "module-sounds", label: "Sounds", section: "Modules", path: "modules.sounds", control: { kind: "toggle" }, keywords: "soundboard audio" },
-  { id: "module-teams", label: "Teams", section: "Modules", path: "modules.teams", control: { kind: "toggle" }, keywords: "shared katherine bonus" },
 
   // nutrition
   { id: "cal-target", label: "Calories", section: "Nutrition", path: "nutrition.calories", control: { kind: "number", min: 1000, max: 6000, step: 50 }, keywords: "kcal macro target" },

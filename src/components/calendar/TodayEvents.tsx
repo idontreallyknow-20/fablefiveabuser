@@ -1,110 +1,67 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { IconCalendar } from "@/components/ui/Icons";
-import { useSettings } from "@/lib/settings/store";
+import { useMemo } from "react";
+import Link from "next/link";
+import { todayISO, useTasks } from "@/lib/data/tasks";
+import { useRoutines } from "@/lib/data/routines";
+import { mergeCalendar, type CalendarItem } from "@/lib/calendar/local";
 
-interface CalendarStatus {
-  configured: boolean;
-  connected: boolean;
+/** today's timed items from the built-in calendar: scheduled tasks and routines */
+export function useTodayAgenda(): { items: CalendarItem[]; loading: boolean } {
+  const { data: tasks, isLoading: tl } = useTasks();
+  const { data: routines, isLoading: rl } = useRoutines();
+  const today = todayISO();
+  const items = useMemo(() => {
+    const buckets = mergeCalendar({
+      tasks: tasks ?? [],
+      events: [],
+      routines: routines ?? [],
+      from: today,
+      to: today,
+    });
+    return (buckets.get(today) ?? []).filter((i) => i.time && !i.completed);
+  }, [tasks, routines, today]);
+  return { items, loading: tl || rl };
 }
 
-export function useCalendarStatus() {
-  return useQuery<CalendarStatus>({
-    queryKey: ["google", "status"],
-    queryFn: async () => {
-      const res = await fetch("/api/google/status");
-      if (!res.ok) throw new Error("status failed");
-      return res.json();
-    },
-    staleTime: 60_000,
-  });
+function minutesOf(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
 }
 
-export interface OrbitEvent {
-  id: string;
-  title: string;
-  startsAt: string | null;
-  endsAt: string | null;
-  allDay: boolean;
-  color: string | null;
-  calendarId: string;
-}
-
-export function useTodayEvents(enabled: boolean) {
-  return useQuery<{ events: OrbitEvent[] }>({
-    queryKey: ["google", "events", "today"],
-    queryFn: async () => {
-      const res = await fetch("/api/google/events?range=today");
-      if (!res.ok) throw new Error("events failed");
-      return res.json();
-    },
-    enabled,
-    refetchInterval: 5 * 60 * 1000,
-  });
-}
-
-export function nextEventOf(events: OrbitEvent[]): OrbitEvent | null {
-  const now = Date.now();
-  const upcoming = events
-    .filter((e) => e.startsAt && new Date(e.startsAt).getTime() > now && !e.allDay)
-    .sort((a, b) => new Date(a.startsAt!).getTime() - new Date(b.startsAt!).getTime());
-  return upcoming[0] ?? null;
+/** the next timed item still ahead of now */
+export function nextItemOf(items: CalendarItem[], now = new Date()): CalendarItem | null {
+  const mins = now.getHours() * 60 + now.getMinutes();
+  return items.find((i) => i.time && minutesOf(i.time) > mins) ?? null;
 }
 
 export function TodayEvents() {
-  const { data: status } = useCalendarStatus();
-  const { data } = useTodayEvents(Boolean(status?.connected));
-  const timezone = useSettings((s) => s.settings.location.timezone);
+  const { items, loading } = useTodayAgenda();
 
-  if (!status) return <div className="surface h-24 animate-pulse" aria-hidden />;
+  if (loading) return <div className="surface h-24 animate-pulse" aria-hidden />;
 
-  // Unconfigured installs hide the widget; the built-in calendar is the
-  // core surface and Google connect lives in /space/connections.
-  if (!status.configured) return null;
-
-  if (!status.connected) {
-    return (
-      <div className="surface flex items-center justify-between gap-3 p-4">
-        <IconCalendar size={18} className="shrink-0 text-ink-faint" />
-        <a
-          href="/api/google/auth"
-          className="shrink-0 rounded-xl border border-(--accent)/35 bg-accent-soft px-3.5 py-2 text-[13px] font-medium text-accent transition-colors hover:bg-(--accent)/22"
-        >
-          Connect
-        </a>
-      </div>
-    );
-  }
-
-  const events = data?.events ?? [];
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: timezone,
-  });
-
-  // eslint-disable-next-line react-hooks/purity -- a coarse "now" for dimming past events; refreshed by the 5-minute refetch
-  const now = Date.now();
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
 
   return (
     <div className="surface p-4">
-      <p className="eyebrow mb-2.5">Today&apos;s calendar</p>
-      {events.length === 0 ? (
-        <p className="text-sm text-ink-faint">Nothing scheduled. The day is yours.</p>
+      <p className="eyebrow mb-2.5">Today&apos;s schedule</p>
+      {items.length === 0 ? (
+        <p className="text-sm text-ink-faint">
+          Nothing scheduled.{" "}
+          <Link href="/calendar" className="text-accent hover:underline">
+            Plan the day
+          </Link>
+        </p>
       ) : (
         <ol className="flex flex-col gap-2">
-          {events.slice(0, 6).map((e) => {
-            const past = e.endsAt && new Date(e.endsAt).getTime() < now;
+          {items.slice(0, 6).map((e) => {
+            const past = e.time !== null && minutesOf(e.time) < mins;
             return (
               <li key={e.id} className={`flex items-baseline gap-3 ${past ? "opacity-45" : ""}`}>
-                <span className="tnum w-11 shrink-0 font-mono text-[12px] text-ink-faint">
-                  {e.allDay ? "All day" : e.startsAt ? fmt.format(new Date(e.startsAt)) : ""}
-                </span>
+                <span className="tnum w-11 shrink-0 font-mono text-[12px] text-ink-faint">{e.time}</span>
                 <span
-                  className="mt-1 h-2 w-0.5 shrink-0 self-stretch rounded-full"
-                  style={{ background: e.color ?? "var(--accent)" }}
+                  className="mt-1 h-2 w-0.5 shrink-0 self-stretch rounded-full bg-(--accent)"
                   aria-hidden
                 />
                 <span className="truncate text-sm text-ink-dim">{e.title}</span>
