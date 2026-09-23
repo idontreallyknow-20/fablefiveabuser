@@ -1,12 +1,12 @@
-// End-to-end drive against the mock Supabase adapter.
-// Signs up, exercises every module, and captures screenshots for visual QA.
+// End-to-end drive against a local dev or production server.
+// Exercises every module on a fresh device and captures screenshots for visual QA.
 // Run: node tests/e2e/drive.mjs [shots-dir]
 
 import { chromium } from "@playwright/test";
 
 const BASE = "http://localhost:3000";
 const SHOTS = process.argv[2] ?? "/tmp/orbit-shots";
-const executablePath = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const executablePath = process.env.CHROMIUM_PATH;
 
 const results = [];
 const consoleErrors = [];
@@ -29,23 +29,18 @@ page.on("pageerror", (e) => consoleErrors.push(String(e)));
 const shot = (name) => page.screenshot({ path: `${SHOTS}/${name}.png` });
 
 try {
-  // ---- reset mock state so reruns start clean ----
-  await fetch("http://localhost:54321/__reset", { method: "POST" }).catch(() => {});
-
-  // ---- signup (bootstrap account) ----
-  await page.goto(`${BASE}/login`, { waitUntil: "networkidle" });
-  await shot("01-login");
-  const createBtn = page.getByRole("button", { name: "Create account" });
-  await createBtn.waitFor({ timeout: 8000 });
-  await createBtn.click();
-  await page.getByLabel("Display name").fill("Joseph");
-  await page.getByLabel("Email").fill("qa@orbit.local");
-  await page.getByLabel("Password").fill("orbit-e2e-password");
-  await page.getByRole("button", { name: "Create account" }).last().click();
-  await page.waitForURL("**/today", { timeout: 20000 });
-  check("signup + bootstrap login lands on Today", true);
-  await page.waitForTimeout(2500);
+  // ---- no accounts: the root opens the app straight away ----
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  check("root opens Today with no sign-in", page.url().endsWith("/today") || page.url().endsWith("/"));
+  await page.getByLabel("Add a task to the backlog").waitFor({ timeout: 15000 });
   await shot("02-today-empty");
+
+  // ---- old auth routes are gone ----
+  const loginRes = await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
+  check("login route no longer exists", loginRes?.status() === 404);
+  await shot("01-not-found");
+  await page.goto(`${BASE}/today`, { waitUntil: "networkidle" });
+  await page.getByLabel("Add a task to the backlog").waitFor({ timeout: 15000 });
 
   // ---- add backlog tasks + priorities ----
   await page.getByLabel("Add a task to the backlog").fill("Ship NerfChess landing page");
@@ -250,87 +245,10 @@ try {
   await page.goto(`${BASE}/space/connections`, { waitUntil: "networkidle" });
   await page.waitForTimeout(800);
   check(
-    "connections page renders steppers",
-    (await page.getByText("Spotify").first().isVisible().catch(() => false)) &&
-      (await page.getByLabel("Discord").first().isVisible().catch(() => false)),
+    "connections page renders",
+    await page.getByLabel("Discord").first().isVisible().catch(() => false),
   );
   await shot("19-connections");
-
-  // ---- team: create, join from a second browser, claim the day ----
-  await page.goto(`${BASE}/space/team`, { waitUntil: "networkidle" });
-  await page.waitForTimeout(800);
-  await page.getByLabel("Team name").fill("Orbit");
-  await page.getByRole("button", { name: "Create", exact: true }).click();
-  await page.waitForTimeout(900);
-  const inviteCode = (
-    await page
-      .getByTitle("Copy")
-      .first()
-      .textContent()
-      .catch(async () => (await page.locator("code").first().textContent().catch(() => "")) ?? "")
-  )?.trim();
-  check("team created with invite code", Boolean(inviteCode));
-  await shot("22-team-created");
-
-  if (inviteCode) {
-    // second user directly against the mock, then join through the UI
-    await fetch("http://localhost:54321/auth/v1/signup", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        email: "katherine@orbit.local",
-        password: "orbit-e2e-password",
-        data: { display_name: "Katherine" },
-      }),
-    });
-    const ctxB = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-    const pageB = await ctxB.newPage();
-    await pageB.goto(`${BASE}/login`, { waitUntil: "networkidle" });
-    await pageB.getByLabel("Email").fill("katherine@orbit.local");
-    await pageB.getByLabel("Password").fill("orbit-e2e-password");
-    await pageB.getByRole("button", { name: "Sign in", exact: true }).click();
-    await pageB.waitForURL("**/today", { timeout: 20000 }).catch(() => {});
-    await pageB.goto(`${BASE}/space/team`, { waitUntil: "networkidle" });
-    await pageB.getByLabel("Invite code").fill(inviteCode);
-    await pageB.getByRole("button", { name: "Join", exact: true }).click();
-    await pageB.waitForTimeout(900);
-    const joined = await pageB.getByText("Katherine").first().isVisible().catch(() => false);
-    check("second user joins by invite code", joined);
-
-    // Katherine sets and completes a priority
-    await pageB.goto(`${BASE}/today`, { waitUntil: "networkidle" });
-    await pageB.waitForTimeout(800);
-    await pageB.getByLabel("Add a task to the backlog").fill("Finish lab report");
-    await pageB.getByRole("button", { name: "Add", exact: true }).click();
-    await pageB.waitForTimeout(400);
-    await pageB.getByRole("button", { name: "Choose a priority" }).first().click();
-    await pageB.waitForTimeout(500);
-    await pageB.getByRole("button", { name: /Finish lab report/ }).first().click();
-    await pageB.waitForTimeout(500);
-    await pageB.getByLabel(/Complete Finish lab report/).click();
-    await pageB.waitForTimeout(700);
-
-    // Joseph adds the Team widget and claims the aligned day
-    await page.goto(`${BASE}/today`, { waitUntil: "networkidle" });
-    await page.waitForTimeout(800);
-    await page.getByRole("button", { name: "Edit layout" }).click();
-    await page.getByRole("button", { name: "Widget", exact: true }).click();
-    await page.waitForTimeout(300);
-    await page.getByRole("button", { name: "Team", exact: true }).click();
-    await page.waitForTimeout(400);
-    await page.getByRole("button", { name: "Done", exact: true }).click();
-    await page.waitForTimeout(900);
-    const claimBtn = page.getByRole("button", { name: "Claim the day" });
-    if (await claimBtn.isVisible().catch(() => false)) {
-      await claimBtn.click();
-      await page.waitForTimeout(900);
-      check("team day claims when aligned", await page.getByText("aligned").first().isVisible().catch(() => false));
-    } else {
-      check("team day claims when aligned", false, "claim button not visible");
-    }
-    await shot("23-team-aligned");
-    await ctxB.close();
-  }
 
   // ---- reflect ----
   await page.goto(`${BASE}/reflect`, { waitUntil: "networkidle" });
@@ -350,14 +268,14 @@ try {
   await page.waitForTimeout(800);
   await shot("11-space-appearance");
 
-  // ---- space: account (app name edit) ----
-  await page.goto(`${BASE}/space/account`, { waitUntil: "networkidle" });
+  // ---- space: profile (app name edit) ----
+  await page.goto(`${BASE}/space/profile`, { waitUntil: "networkidle" });
   await page.waitForTimeout(600);
   await page.getByLabel("Application name").fill("Josephs Orbit");
   await page.getByRole("button", { name: "Save changes" }).click();
   await page.waitForTimeout(900);
   check("app name editable in settings", true);
-  await shot("12-space-account");
+  await shot("12-space-profile");
 
   // ---- focus + ambient ----
   await page.goto(`${BASE}/focus`, { waitUntil: "networkidle" });
@@ -430,12 +348,30 @@ try {
   await shot("resp-mobile-train");
   check("responsive sweep captured", true);
 
-  // ---- sign out ----
+  // ---- data survives a reload (stored on the device) ----
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.goto(`${BASE}/space/account`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Sign out" }).click();
-  await page.waitForURL("**/login", { timeout: 10000 });
-  check("sign out returns to login", true);
+  await page.goto(`${BASE}/projects`, { waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.goto(`${BASE}/space/profile`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+  check(
+    "profile edits persist across reloads",
+    (await page.getByLabel("Application name").inputValue()) === "Josephs Orbit",
+  );
+
+  // ---- no horizontal overflow at phone, tablet and desktop widths ----
+  const routes = ["/today", "/projects", "/calendar", "/train", "/reflect", "/sounds", "/space", "/space/data", "/focus"];
+  const overflow = [];
+  for (const [w, h] of [[375, 812], [768, 1024], [1440, 900]]) {
+    await page.setViewportSize({ width: w, height: h });
+    for (const r of routes) {
+      await page.goto(`${BASE}${r}`, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(700);
+      const wide = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      if (wide > 1) overflow.push(`${r}@${w} +${wide}px`);
+    }
+  }
+  check("no horizontal overflow", overflow.length === 0, overflow.join(", "));
 } catch (e) {
   check("e2e drive completed", false, String(e).slice(0, 300));
 }

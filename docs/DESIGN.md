@@ -38,11 +38,12 @@ clock from 72 to 176 fluid. Line-height 1.5 body, 1.1 display.
   decoration. Secondary hues may only appear inside the scene layer.
 - Surface ladder instead of shadows: 4 steps (canvas, panel, raised, overlay)
   separated by ~4% lightness and a 1px hairline at 8-12% alpha.
-- Text: warm off-white at 100/70/45% opacity steps. Body contrast targets
+- Text: warm off-white at 100/70/54% opacity steps (the faint step keeps
+  4.5:1 contrast for small captions). Body contrast targets
   APCA Lc 75+; captions Lc 60+. No pure white (halation).
 - Semantic: success = each theme's accent, error = desaturated brick
   `#C4574E` family adjusted per theme. No third-party brand colors except
-  inside official Spotify attribution.
+  inside the scene layer.
 
 ## Surface + depth
 
