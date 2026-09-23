@@ -25,8 +25,6 @@ export interface SceneEnv {
   quality: number;
   /** when true draw one static frame and stop */
   still: boolean;
-  /** album-art accent for subtle music glow, or null */
-  glowColor: string | null;
 }
 
 export interface EffectState {
@@ -78,6 +76,10 @@ export function gateIntensity(layer: SceneLayerConfig, env: SceneEnv): number {
 /** adaptive tiers: draw-cost governor steps these down on slow machines */
 const TIER_DPR_CAP = [Infinity, 1.1, 1];
 const TIER_QUALITY = [1, 0.65, 0.4];
+/** frame cost (ms, smoothed) past which the lowest tier gives up animating */
+const FREEZE_MS = 16;
+/** smoothed rAF rate under which the device is judged unable to keep up */
+const MIN_FPS = 24;
 
 export class Scene {
   private ctx: CanvasRenderingContext2D;
@@ -97,8 +99,10 @@ export class Scene {
   private baseDpr = 1;
   private tier = 0;
   private costEma = 6;
-  private evalIn = 2;
+  private evalIn = 1;
   private skipFrame = false;
+  /** set when the device cannot animate even the lowest tier smoothly */
+  private frozen = false;
   /** when false the governor is disabled and tier stays 0 */
   adaptive = true;
   stats = { fps: 60, drawMs: 6, tier: 0 };
@@ -161,6 +165,8 @@ export class Scene {
     if (tier === this.tier) return;
     this.tier = tier;
     this.stats.tier = tier;
+    // give the smoothed cost time to reflect the new tier before judging it
+    this.evalIn = 2;
     this.resize(this.w, this.h, this.baseDpr);
   }
 
@@ -172,8 +178,14 @@ export class Scene {
     }
     this.evalIn -= dt;
     if (this.evalIn > 0) return;
-    this.evalIn = 2;
-    if (this.costEma > 9 && this.tier < 2) this.setTier(this.tier + 1);
+    this.evalIn = 1;
+    // raster work lands outside drawFrame, so the frame rate is the honest signal
+    if (this.costEma > FREEZE_MS || this.stats.fps < MIN_FPS) {
+      // far over budget: drop straight to the lowest tier, and if even that
+      // can't keep up, hold a still frame rather than stutter the device
+      if (this.tier < 2) this.setTier(2);
+      else this.frozen = true;
+    } else if (this.costEma > 9 && this.tier < 2) this.setTier(this.tier + 1);
     else if (this.costEma < 3.5 && this.tier > 0) this.setTier(this.tier - 1);
   }
 
@@ -218,16 +230,17 @@ export class Scene {
     this.last = performance.now();
     const loop = (now: number) => {
       if (!this.running) return;
-      const dt = Math.min(0.05, (now - this.last) / 1000);
+      const realDt = (now - this.last) / 1000;
+      // animation steps are clamped so a stall never teleports particles
+      const dt = Math.min(0.05, realDt);
       this.last = now;
-      if (dt > 0) this.stats.fps += (1 / dt - this.stats.fps) * 0.05;
+      if (realDt > 0) this.stats.fps += (1 / realDt - this.stats.fps) * 0.1;
       // lowest tier renders at half rate
       this.skipFrame = this.tier === 2 && !this.skipFrame;
-      if (!this.skipFrame) {
-        this.drawFrame(this.tier === 2 ? dt * 2 : dt);
-        this.govern(dt);
-      }
-      if (this.env.still) {
+      if (!this.skipFrame) this.drawFrame(this.tier === 2 ? dt * 2 : dt);
+      // the governor runs on wall time so slow devices get judged quickly
+      this.govern(realDt);
+      if (this.env.still || this.frozen) {
         this.running = false;
         return;
       }
