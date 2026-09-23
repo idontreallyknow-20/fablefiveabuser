@@ -57,6 +57,7 @@ function ProjectHeader({ project, tasks }: { project: Project; tasks: Task[] }) 
 
   return (
     <header className="rise">
+      <h1 className="sr-only">{project.name}</h1>
       <Link
         href="/projects"
         className="eyebrow inline-block transition-colors hover:text-ink-dim"

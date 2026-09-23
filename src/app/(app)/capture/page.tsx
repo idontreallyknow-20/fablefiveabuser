@@ -44,7 +44,7 @@ function CaptureForm() {
 
   return (
     <div className="mx-auto flex min-h-[70dvh] w-full max-w-lg flex-col justify-center">
-      <p className="eyebrow rise mb-3">Capture</p>
+      <h1 className="eyebrow rise mb-3">Capture</h1>
       <div className="rise" style={{ "--stagger-i": 1 } as React.CSSProperties}>
         <input
           ref={inputRef}

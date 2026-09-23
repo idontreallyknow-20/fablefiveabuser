@@ -21,9 +21,9 @@ import { useProfile } from "@/lib/data/profile";
 import { PinGate } from "@/components/shell/PinGate";
 import { AutoTheme } from "@/components/shell/AutoTheme";
 import { NotificationEngine } from "@/components/shell/NotificationEngine";
-import { OutboxDot } from "@/components/shell/OutboxDot";
 import { CommandPalette } from "@/components/shell/CommandPalette";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
+import { AUTHOR } from "@/lib/site";
 
 const NAV = [
   { href: "/today", label: "Today", icon: IconToday },
@@ -99,7 +99,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <AutoTheme />
         <NotificationEngine />
         <PinGate />
-        <OutboxDot />
         <CommandPalette />
         <AssistantPanel />
         {children}
@@ -112,8 +111,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <BackdropMedia />
       <AtmosphereCanvas />
       <AutoTheme />
+      <NotificationEngine />
       <PinGate />
-      <OutboxDot />
       <CommandPalette />
       <AssistantPanel />
 
@@ -124,6 +123,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <Link
           href="/today"
+          aria-label={`${appName}, today`}
           className="display mb-8 text-[15px] font-medium tracking-tight text-ink-dim transition-colors hover:text-ink"
         >
           {appName.slice(0, 1)}
@@ -194,6 +194,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="relative z-10 min-h-dvh px-4 pb-28 pt-6 md:pb-10 md:pl-[104px] md:pr-8 md:pt-8">
         <div className="mx-auto w-full max-w-[1560px]">{children}</div>
+        <footer className="mx-auto mt-16 flex w-full max-w-[1560px] flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-line/60 pt-5 text-[12px] text-ink-faint">
+          <span>Free and private. Everything stays on this device.</span>
+          <span className="flex items-center gap-3">
+            <Link href="/about" className="transition-colors hover:text-ink-dim">
+              About
+            </Link>
+            <span aria-hidden>·</span>
+            <span>
+              Built by{" "}
+              <a href={AUTHOR.url} className="text-ink-dim transition-colors hover:text-accent">
+                Joseph Leung
+              </a>
+            </span>
+          </span>
+        </footer>
       </main>
     </div>
   );

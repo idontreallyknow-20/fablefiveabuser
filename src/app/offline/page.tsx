@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Offline",
+  robots: { index: false, follow: false },
+};
 
 export default function OfflinePage() {
   return (
@@ -6,8 +12,8 @@ export default function OfflinePage() {
       <p className="eyebrow">Offline</p>
       <h1 className="display text-2xl font-light text-ink">The city is still there.</h1>
       <p className="max-w-sm text-sm text-ink-faint">
-        Orbit needs a connection to reach your data. It will pick up where you left off
-        as soon as you are back online.
+        This page hasn&apos;t been saved for offline use yet. Your data is safe on this
+        device and will be right here once you&apos;re back online.
       </p>
       <Link href="/today" className="mt-2 text-sm text-accent hover:underline">
         Try again
