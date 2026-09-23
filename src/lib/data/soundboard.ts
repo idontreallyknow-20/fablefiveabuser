@@ -1,13 +1,13 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import type { Tables, TablesInsert, TablesUpdate } from "@/lib/db/types";
 
 export type SoundPad = Tables<"soundboard_pads">;
 
 async function userId() {
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -19,7 +19,7 @@ export function usePads() {
   return useQuery({
     queryKey: ["soundboard"],
     queryFn: async (): Promise<SoundPad[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data, error } = await supabase
         .from("soundboard_pads")
         .select("*")
@@ -34,7 +34,7 @@ export function useCreatePad() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Omit<TablesInsert<"soundboard_pads">, "user_id">) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const uid = await userId();
       const { data, error } = await supabase
         .from("soundboard_pads")
@@ -52,7 +52,7 @@ export function useUpdatePad() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: TablesUpdate<"soundboard_pads"> }) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("soundboard_pads").update(patch).eq("id", id);
       if (error) throw error;
     },
@@ -64,7 +64,7 @@ export function useDeletePad() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("soundboard_pads").delete().eq("id", id);
       if (error) throw error;
     },

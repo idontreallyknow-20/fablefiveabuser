@@ -1,9 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import type { Tables, TablesInsert } from "@/lib/db/types";
-import { runOrQueue } from "@/lib/offline/outbox";
 
 export type Meal = Tables<"meals">;
 
@@ -15,7 +14,7 @@ export interface MacroTotals {
 }
 
 async function userId() {
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -27,7 +26,7 @@ export function useMeals(date: string) {
   return useQuery({
     queryKey: ["meals", date],
     queryFn: async (): Promise<Meal[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data, error } = await supabase
         .from("meals")
         .select("*")
@@ -88,13 +87,11 @@ export function useAddMeal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Omit<TablesInsert<"meals">, "user_id">) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const uid = await userId();
       const row = { ...input, id: input.id ?? crypto.randomUUID(), user_id: uid };
-      await runOrQueue({ table: "meals", op: "insert", payload: row }, async () => {
-        const { error } = await supabase.from("meals").insert(row);
-        if (error) throw error;
-      });
+      const { error } = await supabase.from("meals").insert(row);
+      if (error) throw error;
       return row;
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["meals"] }),
@@ -105,7 +102,7 @@ export function useDeleteMeal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("meals").delete().eq("id", id);
       if (error) throw error;
     },

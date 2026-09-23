@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import type { Tables, TablesInsert, TablesUpdate } from "@/lib/db/types";
 
 export type Project = Tables<"projects">;
@@ -17,7 +17,7 @@ export const NERF_PRODUCT_STATUSES = [
 ];
 
 async function userId() {
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -29,7 +29,7 @@ export function useProjects(includeArchived = false) {
   return useQuery({
     queryKey: ["projects", includeArchived],
     queryFn: async (): Promise<Project[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       let q = supabase.from("projects").select("*").order("sort_order").order("created_at");
       if (!includeArchived) q = q.eq("archived", false);
       const { data, error } = await q;
@@ -43,7 +43,7 @@ export function useProject(id: string) {
   return useQuery({
     queryKey: ["projects", "one", id],
     queryFn: async (): Promise<Project | null> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data, error } = await supabase
         .from("projects")
         .select("*")
@@ -60,7 +60,7 @@ export function useCreateProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Omit<TablesInsert<"projects">, "user_id">) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const uid = await userId();
       const { data, error } = await supabase
         .from("projects")
@@ -78,7 +78,7 @@ export function useUpdateProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: TablesUpdate<"projects"> }) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("projects").update(patch).eq("id", id);
       if (error) throw error;
     },
@@ -90,7 +90,7 @@ export function useDeleteProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("projects").delete().eq("id", id);
       if (error) throw error;
     },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import type { Tables, TablesUpdate } from "@/lib/db/types";
 
 export type Profile = Tables<"profiles">;
@@ -10,7 +10,7 @@ export function useProfile() {
   return useQuery({
     queryKey: ["profile"],
     queryFn: async (): Promise<Profile | null> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -31,7 +31,7 @@ export function useUpdateProfile() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (patch: TablesUpdate<"profiles">) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const {
         data: { user },
       } = await supabase.auth.getUser();

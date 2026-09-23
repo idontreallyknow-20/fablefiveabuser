@@ -1,7 +1,7 @@
 // Orbit service worker: offline shell + static asset caching.
 // Network-first for pages (fresh data matters), cache-first for static assets.
 
-const VERSION = "orbit-v2";
+const VERSION = "orbit-v3";
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const OFFLINE_URL = "/offline";
@@ -35,7 +35,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  // never cache api or auth traffic
+  // never cache api traffic
   if (url.pathname.startsWith("/api/")) return;
 
   // static assets: cache-first
@@ -72,26 +72,6 @@ self.addEventListener("fetch", (event) => {
         ),
     );
   }
-});
-
-// web push (requires VAPID configuration server-side)
-self.addEventListener("push", (event) => {
-  if (!event.data) return;
-  let payload = { title: "Orbit", body: "" };
-  try {
-    payload = event.data.json();
-  } catch {
-    payload.body = event.data.text();
-  }
-  event.waitUntil(
-    self.registration.showNotification(payload.title || "Orbit", {
-      body: payload.body || "",
-      icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
-      silent: true,
-      data: { url: payload.url || "/today" },
-    }),
-  );
 });
 
 self.addEventListener("notificationclick", (event) => {

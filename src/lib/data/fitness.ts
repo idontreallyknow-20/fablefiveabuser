@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import type { Tables, TablesInsert, TablesUpdate } from "@/lib/db/types";
 
 export type Exercise = Tables<"exercises">;
@@ -55,7 +55,7 @@ export const CATEGORY_ORDER: ExerciseCategory[] = [
 ];
 
 async function userId() {
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -71,7 +71,7 @@ export function useExercises(includeArchived = false) {
   return useQuery({
     queryKey: ["exercises", { includeArchived }],
     queryFn: async (): Promise<Exercise[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       let q = supabase.from("exercises").select("*").order("name");
       if (!includeArchived) q = q.eq("archived", false);
       const { data, error } = await q;
@@ -89,7 +89,7 @@ export function useCreateExercise() {
       category: ExerciseCategory;
       metrics: Metric[];
     }): Promise<Exercise> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const uid = await userId();
       const { data, error } = await supabase
         .from("exercises")
@@ -107,7 +107,7 @@ export function useArchiveExercise() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("exercises").update({ archived }).eq("id", id);
       if (error) throw error;
     },
@@ -123,7 +123,7 @@ export function useWorkoutSessions(limit = 30) {
   return useQuery({
     queryKey: ["workout_sessions", limit],
     queryFn: async (): Promise<WorkoutSession[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data, error } = await supabase
         .from("workout_sessions")
         .select("*")
@@ -141,7 +141,7 @@ export function useSession(id: string | null) {
     queryKey: ["workout_session", id],
     enabled: Boolean(id),
     queryFn: async (): Promise<{ session: WorkoutSession; entries: WorkoutEntry[] }> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const [s, e] = await Promise.all([
         supabase.from("workout_sessions").select("*").eq("id", id as string).single(),
         supabase
@@ -167,7 +167,7 @@ export function useCreateSession() {
       split: string;
       date: string;
     }): Promise<WorkoutSession> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const uid = await userId();
       const { data, error } = await supabase
         .from("workout_sessions")
@@ -191,7 +191,7 @@ export function useUpdateSession() {
       id: string;
       patch: TablesUpdate<"workout_sessions">;
     }) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("workout_sessions").update(patch).eq("id", id);
       if (error) throw error;
     },
@@ -211,7 +211,7 @@ export function useAllEntries() {
   return useQuery({
     queryKey: ["workout_entries", "all"],
     queryFn: async (): Promise<WorkoutEntry[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data, error } = await supabase
         .from("workout_entries")
         .select("*")
@@ -252,7 +252,7 @@ export function useAddEntry() {
       rpe: number | null;
       formNote: string;
     }): Promise<WorkoutEntry> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const uid = await userId();
       const { data: prior, error: priorError } = await supabase
         .from("workout_entries")
@@ -297,7 +297,7 @@ export function useUpdateEntry() {
       id: string;
       patch: TablesUpdate<"workout_entries">;
     }) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("workout_entries").update(patch).eq("id", id);
       if (error) throw error;
     },
@@ -309,7 +309,7 @@ export function useDeleteEntry() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("workout_entries").delete().eq("id", id);
       if (error) throw error;
     },
@@ -325,7 +325,7 @@ export function useRecoveryNotes(limit = 20) {
   return useQuery({
     queryKey: ["recovery_notes", limit],
     queryFn: async (): Promise<RecoveryNote[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data, error } = await supabase
         .from("recovery_notes")
         .select("*")
@@ -341,7 +341,7 @@ export function useCreateRecoveryNote() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Omit<TablesInsert<"recovery_notes">, "user_id">) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const uid = await userId();
       const { error } = await supabase
         .from("recovery_notes")
@@ -356,7 +356,7 @@ export function useDeleteRecoveryNote() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("recovery_notes").delete().eq("id", id);
       if (error) throw error;
     },

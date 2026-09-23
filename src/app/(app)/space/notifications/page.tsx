@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import { useSettings } from "@/lib/settings/store";
 import { Toggle } from "@/components/ui/Segmented";
 import { Button } from "@/components/ui/Button";
@@ -27,7 +27,7 @@ function usePrefs() {
   return useQuery({
     queryKey: ["notification_prefs"],
     queryFn: async (): Promise<Tables<"notification_prefs">[]> => {
-      const { data, error } = await supabaseBrowser()
+      const { data, error } = await localDb()
         .from("notification_prefs")
         .select("*")
         .order("category");
@@ -41,7 +41,7 @@ function useHistory() {
   return useQuery({
     queryKey: ["notification_log"],
     queryFn: async (): Promise<Tables<"notification_log">[]> => {
-      const { data, error } = await supabaseBrowser()
+      const { data, error } = await localDb()
         .from("notification_log")
         .select("*")
         .order("sent_at", { ascending: false })
@@ -69,7 +69,7 @@ export default function NotificationsPage() {
 
   const togglePref = useMutation({
     mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
-      const { error } = await supabaseBrowser()
+      const { error } = await localDb()
         .from("notification_prefs")
         .update({ enabled })
         .eq("id", id);
@@ -100,8 +100,18 @@ export default function NotificationsPage() {
       toast("Allow notifications on this device first", "error");
       return;
     }
-    new Notification("Orbit", { body: "This is how a reminder will look.", silent: true });
-    const supabase = supabaseBrowser();
+    try {
+      new Notification("Orbit", { body: "This is how a reminder will look.", silent: true });
+    } catch {
+      // mobile browsers only allow notifications from the service worker
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (!reg) {
+        toast("This browser can't show a test notification here", "error");
+        return;
+      }
+      await reg.showNotification("Orbit", { body: "This is how a reminder will look.", silent: true });
+    }
+    const supabase = localDb();
     const {
       data: { user },
     } = await supabase.auth.getUser();
