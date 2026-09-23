@@ -24,15 +24,6 @@ const lazyProps = <T extends object>(loader: () => Promise<ComponentType<T>>) =>
   dynamic(loader, { ssr: false }) as unknown as ComponentType<WidgetProps>;
 
 export const WIDGETS: Record<WidgetKind, WidgetDef> = {
-  team: {
-    kind: "team",
-    name: "Team",
-    component: lazyProps(() => import("@/components/team/TeamWidget").then((m) => m.TeamWidget)),
-    min: { w: 2, h: 2 },
-    max: { w: 6, h: 4 },
-    default: { w: 3, h: 3 },
-    chrome: false,
-  },
   priorities: {
     kind: "priorities",
     name: "Priorities",
@@ -44,16 +35,16 @@ export const WIDGETS: Record<WidgetKind, WidgetDef> = {
   },
   player: {
     kind: "player",
-    name: "Player",
-    component: lazyProps(() => import("@/components/spotify/PlayerCard").then((m) => m.PlayerCard)),
+    name: "Lofi",
+    component: lazyProps(() => import("@/components/soundboard/LofiControl").then((m) => m.LofiControl)),
     min: { w: 3, h: 2 },
     max: { w: 8, h: 4 },
     default: { w: 5, h: 2 },
-    chrome: false,
+    chrome: true,
   },
   "calendar-today": {
     kind: "calendar-today",
-    name: "Today's events",
+    name: "Today's schedule",
     component: lazyProps(() => import("@/components/calendar/TodayEvents").then((m) => m.TodayEvents)),
     min: { w: 3, h: 2 },
     max: { w: 8, h: 6 },

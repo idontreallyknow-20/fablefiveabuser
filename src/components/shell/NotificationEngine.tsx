@@ -2,11 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import { useSettings } from "@/lib/settings/store";
 import { useRoutines, useRoutineLogs } from "@/lib/data/routines";
 import { todayISO } from "@/lib/data/tasks";
-import { useCalendarStatus, useTodayEvents } from "@/components/calendar/TodayEvents";
+import { useTodayAgenda } from "@/components/calendar/TodayEvents";
 
 function inQuietHours(now: Date, start: string, end: string): boolean {
   const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
@@ -15,7 +15,7 @@ function inQuietHours(now: Date, start: string, end: string): boolean {
 
 /**
  * Local notification scheduler: fires calm reminders for due routines and
- * imminent calendar events while Orbit is open. Respects the device
+ * scheduled tasks while Orbit is open. Respects the device
  * permission, per-category preferences, and quiet hours. Every notification
  * is also written to the history in Space.
  */
@@ -24,14 +24,13 @@ export function NotificationEngine() {
   const { data: routines = [] } = useRoutines();
   const date = todayISO();
   const { data: logs = [] } = useRoutineLogs(date);
-  const { data: calStatus } = useCalendarStatus();
-  const { data: eventsData } = useTodayEvents(Boolean(calStatus?.connected));
+  const { items: agenda } = useTodayAgenda();
   const fired = useRef<Set<string>>(new Set());
 
   const { data: prefs = [] } = useQuery({
     queryKey: ["notification_prefs"],
     queryFn: async () => {
-      const { data } = await supabaseBrowser().from("notification_prefs").select("*");
+      const { data } = await localDb().from("notification_prefs").select("*");
       return data ?? [];
     },
     staleTime: 5 * 60 * 1000,
@@ -45,7 +44,7 @@ export function NotificationEngine() {
         return;
       }
       const enabled = new Map(prefs.map((p) => [p.category, p.enabled]));
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -78,19 +77,20 @@ export function NotificationEngine() {
         }
       }
 
-      // calendar events starting in ten minutes
-      for (const e of eventsData?.events ?? []) {
-        if (!e.startsAt || e.allDay) continue;
-        const startsIn = Math.round((new Date(e.startsAt).getTime() - now.getTime()) / 60000);
-        if (startsIn === 10) {
-          await send(`event-${e.id}`, "calendar", e.title, "Starts in ten minutes.");
+      // scheduled tasks starting in ten minutes
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      for (const e of agenda) {
+        if (e.kind !== "task" || !e.time) continue;
+        const [h, m] = e.time.split(":").map(Number);
+        if (h * 60 + m - nowMin === 10) {
+          await send(`event-${e.id}-${date}`, "calendar", e.title, "Starts in ten minutes.");
         }
       }
     };
     const iv = setInterval(tick, 60_000);
     tick();
     return () => clearInterval(iv);
-  }, [routines, logs, prefs, eventsData, settings.quietHours, date]);
+  }, [routines, logs, prefs, agenda, settings.quietHours, date]);
 
   return null;
 }

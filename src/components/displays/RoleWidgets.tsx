@@ -1,43 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
+import { todayISO } from "@/lib/data/tasks";
 import { Clock } from "@/components/today/Clock";
-
-/** side-display extras: recently played (server route may 503 gracefully) */
-export function DisplaySpotifyExtras() {
-  const { data } = useQuery({
-    queryKey: ["spotify", "recent"],
-    queryFn: async () => {
-      const res = await fetch("/api/spotify/recent");
-      if (!res.ok) return { items: [] as { name: string; artists: string; playedAt: string }[] };
-      return res.json() as Promise<{ items: { name: string; artists: string; playedAt: string }[] }>;
-    },
-    refetchInterval: 5 * 60 * 1000,
-  });
-  const items = data?.items ?? [];
-  if (items.length === 0) return null;
-  return (
-    <div className="surface p-4">
-      <p className="eyebrow mb-2.5">Recently played</p>
-      <ol className="flex flex-col gap-1.5">
-        {items.slice(0, 6).map((t, i) => (
-          <li key={i} className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="truncate text-ink-dim">{t.name}</span>
-            <span className="shrink-0 truncate text-[12px] text-ink-faint">{t.artists}</span>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-}
 
 /** nerfchess wall view: next actions first */
 export function DisplayNerf() {
   const { data: tasks = [] } = useQuery({
     queryKey: ["display", "nerf-tasks"],
     queryFn: async () => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data: projects } = await supabase
         .from("projects")
         .select("id")
@@ -58,7 +31,7 @@ export function DisplayNerf() {
   const { data: content = [] } = useQuery({
     queryKey: ["display", "nerf-content"],
     queryFn: async () => {
-      const { data } = await supabaseBrowser()
+      const { data } = await localDb()
         .from("nerf_content")
         .select("*")
         .in("stage", ["script", "record", "edit", "ready"])
@@ -117,8 +90,8 @@ export function DisplayFitness() {
   const { data } = useQuery({
     queryKey: ["display", "fitness"],
     queryFn: async () => {
-      const supabase = supabaseBrowser();
-      const today = new Date().toISOString().slice(0, 10);
+      const supabase = localDb();
+      const today = todayISO();
       const [{ data: session }, { data: prs }] = await Promise.all([
         supabase
           .from("workout_sessions")

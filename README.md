@@ -1,65 +1,54 @@
 # Orbit
 
-A personal atmospheric dashboard: a nighttime city behind glass that tracks
-your day. Built with Next.js, Tailwind, and Supabase. The application name is
-editable in Space, so it only says "Orbit" until you rename it.
+A calm daily dashboard: a nighttime city (or snow, aurora, ocean, and more)
+behind glass that follows the real weather and sky, with the few things that
+matter today on top. Free, no account, and everything stays on your device.
 
-## What it does
+Live: https://aesthetic-inky-seven.vercel.app
 
-- **Today**: an oversized clock, live Richmond Hill weather, your next
-  calendar event, and three priorities backed by a full backlog.
-- **Orbit Guide**: deterministic, explainable priority recommendations (due
-  dates, importance, deferrals, energy, time of day). No AI required.
-- **Focus**: one task, a timer, music, and nothing else.
-- **Ambient**: a composed idle screen with wake lock, burn-in protection, and
-  late-night dimming. Starts automatically after inactivity.
-- **Projects**: general projects with list and board views, plus NerfChess
-  product and marketing pipelines with honest analytics.
-- **Train**: calisthenics and gym logging with personal records and
-  recovery notes.
-- **Reflect**: low-pressure mental check-ins, self-care logging, journaling,
-  and a small private relationship-care module.
-- **11 themes**, each with an original canvas scene that reacts to real
-  weather and real astronomical time. Rainy Midnight City is the default.
-- **Multi-screen**: register each monitor, give it a role (Command Center,
-  Calendar, Spotify, Ambient, and more), and changes sync live via Supabase
-  Realtime.
-- **Spotify** (Premium): playback control, multiple profiles, album-light.
-- **Google Calendar**: two-way sync with loop prevention.
-- **PWA**: installable on desktop and Android, with an offline shell.
+## What's inside
 
-## Stack
+- **Today**: an oversized clock, live weather, three priorities, a backlog,
+  and a customizable widget grid.
+- **Calendar**: month, week and agenda views over tasks, repeats and routines.
+- **Projects**: lists and boards, plus NerfChess product and marketing pipelines.
+- **Train**: calisthenics and gym logging with personal records.
+- **Reflect**: check-ins, self-care, nutrition and journaling.
+- **Focus, Ambient, Sounds**: a focus timer, a full-screen idle scene, a
+  soundboard and a generative lofi bed.
+- **Displays**: give each monitor a role; windows sync live.
+- Installable PWA, works offline once loaded.
 
-Next.js 16 (App Router, TypeScript) · Tailwind CSS v4 · Supabase (Auth,
-Postgres with RLS, Realtime) · Open-Meteo · Spotify Web API · Google Calendar
-API · Vercel.
+## How it works
 
-## Local development
+There is no backend database. `src/lib/local/client.ts` is a small
+Supabase-shaped query client over IndexedDB, so the data hooks read like
+ordinary PostgREST code while every row stays in the browser. Backups export
+and restore from Space -> Data.
+
+Stack: Next.js 16 (App Router, TypeScript), Tailwind CSS v4, TanStack Query,
+zustand, Open-Meteo, Vercel.
+
+## Run it
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in Supabase URL + anon key
-npm run dev
+npm run dev        # http://localhost:3000
 ```
-
-The first account created becomes the owner (bootstrap); after that,
-registration stays closed while `PUBLIC_SIGNUPS_ENABLED=false`.
-
-## Commands
 
 ```bash
-npm run dev        # dev server
 npm run build      # production build
-npm run start      # serve production build
 npm run test       # unit tests (vitest)
-npm run typecheck  # tsc --noEmit
-npm run lint       # eslint
+npm run typecheck
+npm run lint
+# end-to-end drive against a running server (needs Chromium)
+CHROMIUM_PATH=/path/to/chrome node tests/e2e/drive.mjs /tmp/shots
 ```
 
-## Documentation
+No environment variables are needed. See `.env.example` for the optional
+assistant and `docs/DEPLOYMENT.md` for deployment notes.
 
-- `docs/DESIGN.md` — binding art-direction brief and design tokens
-- `docs/DEPLOYMENT.md` — Vercel + Supabase + OAuth setup, step by step
-- `docs/research/` — the visual research and asset licensing reports
-- `ASSET_CREDITS.md` — every third-party asset and its license
-- `supabase/migrations/` — full schema with row level security
+## Built by
+
+Built by [Joseph Leung](https://josephleung-site.vercel.app), a student
+founder in Richmond Hill, Ontario.

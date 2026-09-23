@@ -1,6 +1,6 @@
 "use client";
 
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import type { UserBackground } from "@/lib/backgrounds/data";
 
 const MAX_IMAGE_EDGE = 2560;
@@ -14,7 +14,7 @@ const VIDEO_TYPES: Record<string, string> = {
 };
 
 async function userId(): Promise<string> {
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -173,7 +173,7 @@ export async function uploadBackground(file: File): Promise<UserBackground> {
     throw new Error("Unsupported file type");
   }
 
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   const uid = await userId();
   const id = crypto.randomUUID();
   const path = `${uid}/${id}.${prepared.ext}`;

@@ -38,7 +38,7 @@ export default function DisplaysPage() {
     const plan: { role: string; name: string }[] = [
       { role: "command", name: "Center display" },
       { role: "calendar", name: "Left display" },
-      { role: "spotify", name: "Right display" },
+      { role: "music", name: "Right display" },
     ];
     for (let i = 0; i < Math.min(3, sorted.length); i++) {
       await update.mutateAsync({
@@ -93,7 +93,7 @@ export default function DisplaysPage() {
             <h2 className="eyebrow mb-1">Arrange my screens</h2>
             <p className="max-w-md text-sm text-ink-faint">
               Recommended for three screens: Command Center in the middle, Calendar and
-              priorities on the left, Spotify and Ambient on the right.
+              priorities on the left, Music and Ambient on the right.
             </p>
           </div>
           <Button variant="primary" onClick={arrange}>

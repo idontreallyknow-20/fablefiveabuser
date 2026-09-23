@@ -73,7 +73,6 @@ const PHASE_TINT: Record<string, { top: string; horizon: string; alpha: number }
 
 export const skyGradient: EffectFactory = () => {
   const baked = memoCanvas();
-  const glowSprites = new Map<string, HTMLCanvasElement>();
 
   return {
     draw(ctx, s) {
@@ -100,28 +99,6 @@ export const skyGradient: EffectFactory = () => {
         }
       });
       ctx.drawImage(sky, 0, 0, w, h);
-
-      // music glow: a faint pool of album color low in the scene
-      if (env.glowColor) {
-        let sprite = glowSprites.get(env.glowColor);
-        if (!sprite) {
-          sprite = glowSprite(256, [
-            [0, env.glowColor],
-            [1, "transparent"],
-          ]);
-          glowSprites.set(env.glowColor, sprite);
-          if (glowSprites.size > 8) {
-            const first = glowSprites.keys().next().value;
-            if (first && first !== env.glowColor) glowSprites.delete(first);
-          }
-        }
-        const r = Math.max(w, h) * 0.5;
-        ctx.globalAlpha = 0.07;
-        ctx.globalCompositeOperation = "screen";
-        ctx.drawImage(sprite, w * 0.78 - r, h * 0.92 - r, r * 2, r * 2);
-        ctx.globalCompositeOperation = "source-over";
-        ctx.globalAlpha = 1;
-      }
     },
   };
 };

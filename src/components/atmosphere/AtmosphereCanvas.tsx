@@ -8,7 +8,6 @@ import { useSettings } from "@/lib/settings/store";
 import { particleOnlyTheme } from "@/lib/backgrounds/filters";
 import { useWeather } from "@/lib/weather/useWeather";
 import { getDayPhase, getMoonIllumination, SKY_PALETTES } from "@/lib/weather/phase";
-import { usePlaybackGlow } from "@/lib/spotify/glow";
 
 const CALM_WEATHER: SceneWeather = {
   kind: "clouds",
@@ -52,10 +51,11 @@ export function AtmosphereCanvas({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<Scene | null>(null);
+  const startedRef = useRef(false);
+  const [visible, setVisible] = useState(false);
   const settings = useSettings((s) => s.settings);
   const { data: weather } = useWeather();
   const prefersReduced = usePrefersReducedMotion();
-  const glowColor = usePlaybackGlow(settings.albumGlow);
 
   const themeId = themeOverride ?? settings.theme;
   const theme = THEMES[themeId];
@@ -148,9 +148,8 @@ export function AtmosphereCanvas({
       moonPhase: getMoonIllumination(new Date()),
       quality,
       still,
-      glowColor,
     };
-  }, [weather, weatherReactive, weatherOverride, phaseOverride, timeReactive, reducedMotion, motion, phase, prefersReduced, glowColor]);
+  }, [weather, weatherReactive, weatherOverride, phaseOverride, timeReactive, reducedMotion, motion, phase, prefersReduced]);
 
   // scene lifecycle
   useEffect(() => {
@@ -170,19 +169,47 @@ export function AtmosphereCanvas({
       const dpr = Math.min(window.devicePixelRatio || 1, env.quality > 1.2 ? 1.5 : 1.25);
       scene.resize(parent.clientWidth, parent.clientHeight, dpr);
     };
-    resize();
-    const ro = new ResizeObserver(resize);
+    const ro = new ResizeObserver(() => {
+      if (startedRef.current) resize();
+    });
     ro.observe(parent);
-    scene.run();
+
+    // the first bake is the heaviest frame; let the page hydrate and settle
+    // before painting the scene, then fade it in
+    startedRef.current = false;
+    const start = () => {
+      if (startedRef.current) return;
+      startedRef.current = true;
+      resize();
+      scene.run();
+      setVisible(true);
+    };
+    // Safari has no idle callbacks; fall back to a short timeout
+    const ric = window as Partial<Pick<Window, "requestIdleCallback" | "cancelIdleCallback">>;
+    const idle = (cb: () => void) =>
+      typeof ric.requestIdleCallback === "function"
+        ? ric.requestIdleCallback(cb, { timeout: 1500 })
+        : setTimeout(cb, 200) as unknown as number;
+    let idleId: number | null = null;
+    const onLoad = () => {
+      idleId = idle(start);
+    };
+    if (document.readyState === "complete") onLoad();
+    else window.addEventListener("load", onLoad, { once: true });
 
     // fully cancel the rAF loop while the tab is hidden
     const onVisibility = () => {
       if (document.hidden) scene.stop();
-      else if (!scene.env.still) scene.run();
+      else if (startedRef.current && !scene.env.still) scene.run();
     };
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
+      window.removeEventListener("load", onLoad);
+      if (idleId !== null) {
+        if (typeof ric.cancelIdleCallback === "function") ric.cancelIdleCallback(idleId);
+        else clearTimeout(idleId);
+      }
       document.removeEventListener("visibilitychange", onVisibility);
       ro.disconnect();
       scene.destroy();
@@ -198,7 +225,7 @@ export function AtmosphereCanvas({
     if (!scene) return;
     scene.adaptive = adaptivePerf;
     scene.setEnv(env);
-    if (!env.still) scene.run();
+    if (startedRef.current && !env.still) scene.run();
   }, [env, adaptivePerf]);
 
   // dev frame-cost HUD, opt-in via ?perf=1
@@ -238,7 +265,7 @@ export function AtmosphereCanvas({
       <canvas
         key={backdropActive ? "alpha" : "opaque"}
         ref={canvasRef}
-        className="block h-full w-full"
+        className={`block h-full w-full transition-opacity duration-700 ${visible ? "opacity-100" : "opacity-0"}`}
       />
       {hud && (
         <div className="pointer-events-none fixed right-2 top-2 z-50 rounded bg-black/70 px-2 py-1 font-mono text-[11px] text-white">

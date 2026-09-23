@@ -16,7 +16,6 @@ import {
   taskLinks,
 } from "@/components/projects/task-utils";
 import { parseRecurrence, type Recurrence } from "@/lib/calendar/recurrence";
-import { useTeam } from "@/lib/data/teams";
 import { colorForTag, withAlpha } from "@/lib/colors";
 
 export interface ChecklistItem {
@@ -172,8 +171,6 @@ function TaskEditForm({
   const [recurrence, setRecurrence] = useState<Recurrence | null>(() =>
     parseRecurrence(task.recurrence),
   );
-  const { data: teamData } = useTeam();
-  const [teamId, setTeamId] = useState<string | null>(task.team_id ?? null);
   const [category, setCategory] = useState(() => taskCustom(task).category);
   const [nextAction, setNextAction] = useState(() => taskCustom(task).next_action);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -209,7 +206,6 @@ function TaskEditForm({
       tags,
       checklist: checklist as unknown as Task["checklist"],
       recurrence: recurrence as unknown as Task["recurrence"],
-      team_id: teamId,
       ...(status !== task.status ? statusPatch(status) : {}),
       ...(product
         ? { custom: customPatch(task, { category, next_action: nextAction.trim() }) }
@@ -308,28 +304,6 @@ function TaskEditForm({
                 className="tnum font-mono !h-9 text-[13px]"
               />
             </div>
-
-            {teamData && (
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[13px] font-medium text-ink-dim">
-                  {teamData.team.name || "Team"}
-                </span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={teamId !== null}
-                  aria-label="Shared with team"
-                  onClick={() => setTeamId(teamId ? null : teamData.team.id)}
-                  className={`h-9 rounded-lg border px-3 text-[13px] transition-colors ${
-                    teamId
-                      ? "border-(--accent)/60 bg-accent-soft text-accent"
-                      : "border-line text-ink-faint hover:border-line-strong"
-                  }`}
-                >
-                  {teamId ? "Shared" : "Private"}
-                </button>
-              </div>
-            )}
           </div>
 
           <div className="flex flex-wrap items-end gap-4">

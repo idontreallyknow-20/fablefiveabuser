@@ -2,7 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import type { Tables, TablesUpdate } from "@/lib/db/types";
 
 export type Display = Tables<"displays">;
@@ -42,7 +42,7 @@ export function useDisplays() {
   return useQuery({
     queryKey: ["displays"],
     queryFn: async (): Promise<Display[]> => {
-      const { data, error } = await supabaseBrowser()
+      const { data, error } = await localDb()
         .from("displays")
         .select("*")
         .order("created_at");
@@ -57,7 +57,7 @@ export function useDisplay(id: string | null) {
     queryKey: ["displays", "one", id],
     queryFn: async (): Promise<Display | null> => {
       if (!id) return null;
-      const { data, error } = await supabaseBrowser()
+      const { data, error } = await localDb()
         .from("displays")
         .select("*")
         .eq("id", id)
@@ -73,7 +73,7 @@ export function useRegisterDisplay() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ name, role }: { name: string; role: string }) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -95,7 +95,7 @@ export function useUpdateDisplay() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: TablesUpdate<"displays"> }) => {
-      const { error } = await supabaseBrowser().from("displays").update(patch).eq("id", id);
+      const { error } = await localDb().from("displays").update(patch).eq("id", id);
       if (error) throw error;
     },
     onMutate: async ({ id, patch }) => {
@@ -118,7 +118,7 @@ export function useDeleteDisplay() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabaseBrowser().from("displays").delete().eq("id", id);
+      const { error } = await localDb().from("displays").delete().eq("id", id);
       if (error) throw error;
       if (getLocalDisplayId() === id) setLocalDisplayId(null);
     },
@@ -130,7 +130,7 @@ export function useDeleteDisplay() {
 export function useDisplaysRealtime() {
   const qc = useQueryClient();
   useEffect(() => {
-    const supabase = supabaseBrowser();
+    const supabase = localDb();
     const channel = supabase
       .channel("displays-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "displays" }, () => {
@@ -148,7 +148,7 @@ export function useDisplayHeartbeat(id: string | null) {
   useEffect(() => {
     if (!id) return;
     const beat = async () => {
-      await supabaseBrowser()
+      await localDb()
         .from("displays")
         .update({ last_seen_at: new Date().toISOString() })
         .eq("id", id);
@@ -162,7 +162,7 @@ export function useDisplayHeartbeat(id: string | null) {
 export const ROLE_LABELS: Record<string, string> = {
   command: "Command Center",
   calendar: "Calendar",
-  spotify: "Spotify",
+  music: "Music",
   priorities: "Priorities",
   nerfchess: "NerfChess",
   focus: "Focus",

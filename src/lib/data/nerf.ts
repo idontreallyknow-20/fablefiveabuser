@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import type { Json, Tables, TablesInsert, TablesUpdate } from "@/lib/db/types";
 
 export type NerfItem = Tables<"nerf_content">;
@@ -30,7 +30,7 @@ export function stageIndex(stage: string): number {
 }
 
 async function userId() {
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -46,7 +46,7 @@ async function userId() {
 export function useNerfRealtime() {
   const qc = useQueryClient();
   useEffect(() => {
-    const supabase = supabaseBrowser();
+    const supabase = localDb();
     const channel = supabase
       .channel("nerf-live")
       .on(
@@ -68,7 +68,7 @@ export function useNerfItems(stage?: string) {
   return useQuery({
     queryKey: ["nerf", stage ?? "all"],
     queryFn: async (): Promise<NerfItem[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       let q = supabase
         .from("nerf_content")
         .select("*")
@@ -91,7 +91,7 @@ export function useCreateNerfItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Omit<TablesInsert<"nerf_content">, "user_id">) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const uid = await userId();
       const { data, error } = await supabase
         .from("nerf_content")
@@ -115,7 +115,7 @@ export function useUpdateNerfItem() {
       id: string;
       patch: TablesUpdate<"nerf_content">;
     }) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("nerf_content").update(patch).eq("id", id);
       if (error) throw error;
     },
@@ -142,7 +142,7 @@ export function useDeleteNerfItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("nerf_content").delete().eq("id", id);
       if (error) throw error;
     },

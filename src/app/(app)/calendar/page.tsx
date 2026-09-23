@@ -12,11 +12,6 @@ import {
 import { useRoutines } from "@/lib/data/routines";
 import { useProjects } from "@/lib/data/projects";
 import { colorForTag, withAlpha } from "@/lib/colors";
-import {
-  useCalendarStatus,
-  type OrbitEvent,
-} from "@/components/calendar/TodayEvents";
-import { useQuery } from "@tanstack/react-query";
 import { mergeCalendar, type CalendarItem } from "@/lib/calendar/local";
 import { TaskEditModal } from "@/components/projects/TaskEditModal";
 import { Button } from "@/components/ui/Button";
@@ -55,19 +50,6 @@ function weekStartOf(s: string): string {
 
 function monthLabel(s: string): string {
   return parseISO(s).toLocaleDateString(undefined, { month: "long", year: "numeric" });
-}
-
-function useMonthEvents(enabled: boolean) {
-  return useQuery<{ events: OrbitEvent[] }>({
-    queryKey: ["google", "events", "month"],
-    queryFn: async () => {
-      const res = await fetch("/api/google/events?range=month");
-      if (!res.ok) throw new Error("events failed");
-      return res.json();
-    },
-    enabled,
-    refetchInterval: 5 * 60 * 1000,
-  });
 }
 
 function ItemChip({
@@ -142,8 +124,6 @@ export default function CalendarPage() {
   const { data: tasks = [] } = useTasks();
   const { data: routines = [] } = useRoutines();
   const { data: projects = [] } = useProjects(true);
-  const { data: calStatus } = useCalendarStatus();
-  const { data: eventsData } = useMonthEvents(Boolean(calStatus?.connected));
   const update = useUpdateTask();
   const create = useCreateTask();
 
@@ -169,12 +149,12 @@ export default function CalendarPage() {
     () =>
       mergeCalendar({
         tasks,
-        events: eventsData?.events ?? [],
+        events: [],
         routines,
         from,
         to,
       }),
-    [tasks, eventsData, routines, from, to],
+    [tasks, routines, from, to],
   );
 
   const taskById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);

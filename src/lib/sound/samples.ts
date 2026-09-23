@@ -5,7 +5,7 @@
 // pads fire instantly and keep working offline.
 
 import { openDB, type IDBPDatabase } from "idb";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import { audioContext, masterBus, type Voice } from "@/lib/sound/engine";
 
 const MAX_SAMPLE_BYTES = 2 * 1024 * 1024;
@@ -25,7 +25,7 @@ function idb() {
 }
 
 async function userId(): Promise<string> {
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -42,7 +42,7 @@ export async function uploadSample(file: File): Promise<string> {
   const uid = await userId();
   const ext = file.name.split(".").pop()?.toLowerCase() || "audio";
   const path = `${uid}/${crypto.randomUUID()}.${ext}`;
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   const { error } = await supabase.storage.from("sounds").upload(path, file, {
     contentType: file.type || "application/octet-stream",
   });
@@ -54,7 +54,7 @@ export async function uploadSample(file: File): Promise<string> {
 async function fetchSampleBytes(path: string): Promise<ArrayBuffer> {
   const cached = (await (await idb()).get("samples", path)) as ArrayBuffer | undefined;
   if (cached) return cached;
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   const { data, error } = await supabase.storage.from("sounds").download(path);
   if (error || !data) throw error ?? new Error("sample missing");
   const bytes = await data.arrayBuffer();
@@ -92,7 +92,7 @@ export function playSample(buffer: AudioBuffer, gain: number, loop: boolean): Vo
 }
 
 export async function deleteSample(path: string) {
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   await supabase.storage.from("sounds").remove([path]);
   decoded.delete(path);
   await (await idb()).delete("samples", path);

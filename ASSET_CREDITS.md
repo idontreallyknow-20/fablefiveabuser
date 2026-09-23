@@ -29,23 +29,12 @@ attribution required.
 | Package | Purpose | License |
 | --- | --- | --- |
 | next / react / react-dom | Framework | MIT |
+| @anthropic-ai/sdk | Optional assistant | MIT |
 | tailwindcss | Styling | MIT |
-| @supabase/supabase-js, @supabase/ssr | Auth, database, realtime | MIT |
 | @tanstack/react-query | Data fetching and cache | MIT |
 | zustand | Client state | MIT |
-| motion | Component transitions | MIT |
 | suncalc | Sunrise, sunset, moon phase | BSD-2-Clause |
-| date-fns | Date utilities | MIT |
-| idb | IndexedDB wrapper (offline drafts) | ISC |
-
-## Brand marks
-
-| Mark | Purpose | Terms |
-| --- | --- | --- |
-| Spotify logo (path in `src/components/ui/Icons.tsx`) | Attribution required by Spotify's Developer Design Guidelines wherever Spotify content is displayed | Trademark of Spotify AB; used nominatively for attribution only, never modified or recolored beyond monochrome as their guidelines permit |
-
-Album artwork shown in the player is loaded directly from Spotify's CDN at
-runtime, as Spotify's developer terms require, and is never stored.
+| idb | IndexedDB wrapper (on-device storage) | ISC |
 
 ## Data services
 
@@ -57,5 +46,5 @@ runtime, as Spotify's developer terms require, and is never stored.
 ## Icons
 
 All interface icons are original SVGs drawn for Orbit (see
-`src/components/ui/Icons.tsx`), except the Spotify mark noted above. The PWA
+`src/components/ui/Icons.tsx`). The PWA
 icon is an original composition rendered from `scripts` at build.

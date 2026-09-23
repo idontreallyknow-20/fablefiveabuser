@@ -17,6 +17,8 @@ import { WIDGETS } from "@/lib/widgets/registry";
 
 const ROW_PX = 92;
 const GAP_PX = 12;
+/** per-row height floor when widgets stack on phones */
+const MOBILE_ROW_PX = 56;
 
 /** true at the md breakpoint and above; false during SSR */
 function useDesktop(): boolean {
@@ -145,6 +147,52 @@ export function WidgetGrid({
       }),
     });
   };
+
+  // Viewing: one markup for every width. CSS switches between the stacked
+  // phone column and the 12-column grid, so the server render already
+  // matches the client and nothing jumps when the page hydrates.
+  if (!editing) {
+    return (
+      <div
+        className="flex flex-col gap-3 md:grid md:[grid-template-columns:var(--grid-cols)] md:[grid-auto-rows:var(--grid-row)]"
+        style={
+          {
+            "--grid-cols": `repeat(${GRID_COLS}, minmax(0, 1fr))`,
+            "--grid-row": `${ROW_PX}px`,
+          } as React.CSSProperties
+        }
+      >
+        {[...widgets]
+          .sort((a, b) => a.y - b.y || a.x - b.x)
+          .map((inst) => {
+            const def = WIDGETS[inst.kind];
+            const Comp = def.component;
+            return (
+              <div
+                key={inst.id}
+                data-widget={inst.kind}
+                className={`relative flex min-h-(--mh) flex-col md:min-h-0 md:[grid-column:var(--gc)] md:[grid-row:var(--gr)] ${
+                  def.chrome ? "surface rounded-2xl p-4" : ""
+                }`}
+                style={
+                  {
+                    "--gc": `${inst.x + 1} / span ${inst.w}`,
+                    "--gr": `${inst.y + 1} / span ${inst.h}`,
+                    // phones stack widgets at content height; reserving a
+                    // floor keeps late-loading ones from shoving the rest
+                    "--mh": `${inst.h * MOBILE_ROW_PX}px`,
+                  } as React.CSSProperties
+                }
+              >
+                <div className="flex min-h-0 flex-1 flex-col [&>*]:flex-1">
+                  <Comp props={inst.props ?? {}} onProps={updateProps(inst.id)} editing={false} />
+                </div>
+              </div>
+            );
+          })}
+      </div>
+    );
+  }
 
   if (!desktop) {
     return (

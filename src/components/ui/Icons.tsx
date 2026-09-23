@@ -1,6 +1,4 @@
 // Original line-icon set for Orbit. 1.5px stroke, 20px grid, quiet geometry.
-// The Spotify mark is the exception: Spotify's developer policy requires
-// their logo for attribution wherever Spotify content is shown.
 
 import type { SVGProps } from "react";
 
@@ -72,34 +70,6 @@ export const IconPause = (p: P) => (
   <I {...p}>
     <rect x="6" y="5" width="2.4" height="10" rx="0.8" fill="currentColor" stroke="none" />
     <rect x="11.6" y="5" width="2.4" height="10" rx="0.8" fill="currentColor" stroke="none" />
-  </I>
-);
-
-export const IconNext = (p: P) => (
-  <I {...p}>
-    <path d="M5 5.5v9L11.5 10 5 5.5Z" fill="currentColor" stroke="none" />
-    <path d="M14 5.5v9" />
-  </I>
-);
-
-export const IconPrev = (p: P) => (
-  <I {...p}>
-    <path d="M15 5.5v9L8.5 10 15 5.5Z" fill="currentColor" stroke="none" />
-    <path d="M6 5.5v9" />
-  </I>
-);
-
-export const IconVolume = (p: P) => (
-  <I {...p}>
-    <path d="M4 8v4h2.5L10 15V5L6.5 8H4Z" />
-    <path d="M12.5 7.5a3.6 3.6 0 0 1 0 5" />
-  </I>
-);
-
-export const IconDevice = (p: P) => (
-  <I {...p}>
-    <rect x="3" y="4" width="14" height="9" rx="1.5" />
-    <path d="M7.5 16.5h5" />
   </I>
 );
 
@@ -249,13 +219,6 @@ export const IconLock = (p: P) => (
   </I>
 );
 
-export const IconLogout = (p: P) => (
-  <I {...p}>
-    <path d="M8 3.5H5a1.5 1.5 0 0 0-1.5 1.5v10A1.5 1.5 0 0 0 5 16.5h3" />
-    <path d="M12 6.5l3.5 3.5-3.5 3.5M15 10H8" />
-  </I>
-);
-
 export const IconExport = (p: P) => (
   <I {...p}>
     <path d="M10 12.5v-9M6.5 6.5L10 3l3.5 3.5" />
@@ -333,16 +296,6 @@ export const IconSunset = (p: P) => (
   </I>
 );
 
-/**
- * Spotify logo mark, reproduced for the attribution Spotify's design
- * guidelines require when showing Spotify content. Trademark of Spotify AB.
- */
-export const IconSpotify = ({ size = 18, ...rest }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-label="Spotify" {...rest}>
-    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.502 17.308a.747.747 0 0 1-1.029.249c-2.818-1.722-6.366-2.111-10.542-1.157a.748.748 0 0 1-.333-1.458c4.571-1.045 8.492-.595 11.655 1.338.353.215.464.676.249 1.028zm1.469-3.267a.935.935 0 0 1-1.286.311c-3.226-1.983-8.143-2.557-11.959-1.399a.936.936 0 0 1-.543-1.79c4.358-1.322 9.776-.682 13.477 1.593a.935.935 0 0 1 .311 1.285zm.126-3.403C15.23 8.34 8.845 8.128 5.15 9.249a1.122 1.122 0 0 1-.652-2.148c4.242-1.287 11.294-1.039 15.746 1.605a1.122 1.122 0 1 1-1.146 1.932z" />
-  </svg>
-);
-
 export const IconInsights = (p: P) => (
   <I {...p}>
     <path d="M3.5 16.5v-5" />
@@ -359,9 +312,3 @@ export const IconSpark = (p: P) => (
   </I>
 );
 
-export const IconGoogle = ({ size = 18, ...rest }: P) => (
-  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden {...rest}>
-    <circle cx="10" cy="10" r="7.5" />
-    <path d="M10 6.5v3.5h3.5" strokeLinecap="round" />
-  </svg>
-);

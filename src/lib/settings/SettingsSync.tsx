@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import {
   applySettingsToDocument,
   normalizeSettings,
@@ -11,7 +11,7 @@ import {
 
 /**
  * Keeps settings alive in three places: zustand (runtime), localStorage
- * (instant restore), and profiles.settings (cross-device). Local wins until
+ * (instant restore), and profiles.settings (so backups carry them). Local wins until
  * the profile copy loads; afterwards edits are written back, debounced.
  */
 export function SettingsSync() {
@@ -29,7 +29,7 @@ export function SettingsSync() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -78,7 +78,7 @@ export function SettingsSync() {
     }
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const {
         data: { user },
       } = await supabase.auth.getUser();

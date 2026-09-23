@@ -1,9 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { GoogleCard } from "@/components/connections/GoogleCard";
-import { SpotifyCard } from "@/components/connections/SpotifyCard";
+import { useState } from "react";
 import { DiscordCard } from "@/components/connections/DiscordCard";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -102,36 +99,11 @@ function LocationSection() {
   );
 }
 
-function ConnectionsInner() {
-  const params = useSearchParams();
-  const rawError = params.get("error");
-  const spotifyError =
-    params.get("spotify_error") ?? (rawError && /spotify/i.test(rawError) ? rawError : null);
-  const googleError =
-    params.get("google_error") ?? (rawError && /google/i.test(rawError) ? rawError : null);
-  const pageError = rawError && rawError !== spotifyError && rawError !== googleError ? rawError : null;
-  const connected = params.get("connected");
-
+export default function ConnectionsPage() {
   return (
     <div className="space-y-6 pb-8">
-      {pageError && <p className="font-mono text-[12px] text-danger">{pageError}</p>}
-      {connected && (
-        <p className="font-mono text-[12px] text-ok" role="status">
-          {connected} connected
-        </p>
-      )}
-      <SpotifyCard error={spotifyError} />
-      <GoogleCard error={googleError} />
       <DiscordCard />
       <LocationSection />
     </div>
-  );
-}
-
-export default function ConnectionsPage() {
-  return (
-    <Suspense>
-      <ConnectionsInner />
-    </Suspense>
   );
 }

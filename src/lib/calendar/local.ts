@@ -1,9 +1,19 @@
 // The built-in calendar: one merged, date-bucketed stream of tasks,
-// Google-cached events, and routine schedules.
+// timed events, and routine schedules.
 
 import type { Task } from "@/lib/data/tasks";
-import type { OrbitEvent } from "@/components/calendar/TodayEvents";
 import { expandRecurrence, parseRecurrence } from "@/lib/calendar/recurrence";
+
+/** a timed or all-day event from an outside calendar */
+export interface OrbitEvent {
+  id: string;
+  title: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  allDay: boolean;
+  color: string | null;
+  calendarId: string;
+}
 
 export interface CalendarItem {
   /** unique within the merged stream */

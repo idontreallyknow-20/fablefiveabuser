@@ -1,7 +1,6 @@
 // Free-form Today grid: widget instances snapped to a 12-column grid.
 
 export type WidgetKind =
-  | "team"
   | "priorities"
   | "player"
   | "calendar-today"

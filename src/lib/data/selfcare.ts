@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import type { Tables, TablesInsert, TablesUpdate } from "@/lib/db/types";
 
 export type SelfcareLog = Tables<"selfcare_logs">;
@@ -17,7 +17,7 @@ export const VALUE_KINDS = ["sleep", "water", "protein", "calories"] as const;
 export type ValueKind = (typeof VALUE_KINDS)[number];
 
 async function userId() {
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -33,7 +33,7 @@ export function useSelfcareLogs(date: string) {
   return useQuery({
     queryKey: ["selfcare_logs", date],
     queryFn: async (): Promise<SelfcareLog[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data, error } = await supabase
         .from("selfcare_logs")
         .select("*")
@@ -45,7 +45,7 @@ export function useSelfcareLogs(date: string) {
 }
 
 async function findLog(date: string, kind: string): Promise<SelfcareLog | null> {
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   const { data, error } = await supabase
     .from("selfcare_logs")
     .select("*")
@@ -62,7 +62,7 @@ export function useToggleSelfcare() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ date, kind }: { date: string; kind: DoneKind }) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const existing = await findLog(date, kind);
       if (existing) {
         const { error } = await supabase.from("selfcare_logs").delete().eq("id", existing.id);
@@ -92,7 +92,7 @@ export function useSetSelfcareValue() {
       kind: ValueKind;
       value: number;
     }) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const existing = await findLog(date, kind);
       if (existing) {
         const { error } = await supabase
@@ -117,7 +117,7 @@ export function useSaveJournal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ date, note }: { date: string; note: string }) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const existing = await findLog(date, "journal");
       if (existing) {
         const { error } = await supabase
@@ -141,7 +141,7 @@ export function useJournalEntries(limit = 8) {
   return useQuery({
     queryKey: ["selfcare_logs", "journal", limit],
     queryFn: async (): Promise<SelfcareLog[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data, error } = await supabase
         .from("selfcare_logs")
         .select("*")
@@ -163,7 +163,7 @@ export function useCheckin(date: string) {
   return useQuery({
     queryKey: ["checkins", date],
     queryFn: async (): Promise<Checkin | null> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data, error } = await supabase
         .from("checkins")
         .select("*")
@@ -180,7 +180,7 @@ export function useCheckins(days = 14) {
   return useQuery({
     queryKey: ["checkins", "range", days],
     queryFn: async (): Promise<Checkin[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const since = new Date();
       since.setDate(since.getDate() - (days - 1));
       const { data, error } = await supabase
@@ -205,7 +205,7 @@ export function useUpsertCheckin() {
       date: string;
       patch: Omit<TablesUpdate<"checkins">, "id" | "user_id" | "date">;
     }) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data: existing, error: findError } = await supabase
         .from("checkins")
         .select("id")
@@ -236,7 +236,7 @@ export function useRelationshipItems() {
   return useQuery({
     queryKey: ["relationship_items"],
     queryFn: async (): Promise<RelationshipItem[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data, error } = await supabase
         .from("relationship_items")
         .select("*")
@@ -252,7 +252,7 @@ export function useCreateRelationshipItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Omit<TablesInsert<"relationship_items">, "user_id">) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const uid = await userId();
       const { error } = await supabase
         .from("relationship_items")
@@ -273,7 +273,7 @@ export function useUpdateRelationshipItem() {
       id: string;
       patch: TablesUpdate<"relationship_items">;
     }) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("relationship_items").update(patch).eq("id", id);
       if (error) throw error;
     },
@@ -285,7 +285,7 @@ export function useDeleteRelationshipItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error } = await supabase.from("relationship_items").delete().eq("id", id);
       if (error) throw error;
     },

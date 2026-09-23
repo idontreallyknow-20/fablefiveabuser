@@ -6,10 +6,8 @@ import { Clock } from "@/components/today/Clock";
 import { WeatherChip } from "@/components/today/WeatherChip";
 import { todayISO, usePriorities } from "@/lib/data/tasks";
 import { useRoutines, useRoutineLogs } from "@/lib/data/routines";
-import { useSpotifyStatus, useSpotifyPlayback } from "@/lib/spotify/useSpotify";
-import { useCalendarStatus, useTodayEvents, nextEventOf } from "@/components/calendar/TodayEvents";
+import { useTodayAgenda, nextItemOf } from "@/components/calendar/TodayEvents";
 import { useSettings } from "@/lib/settings/store";
-import { IconSpotify } from "@/components/ui/Icons";
 
 /** requests a screen wake lock while mounted, when enabled and supported */
 function useWakeLock(enabled: boolean) {
@@ -44,10 +42,7 @@ export default function AmbientPage() {
   const settings = useSettings((s) => s.settings);
   const date = todayISO();
   const { data: priorities = [] } = usePriorities(date);
-  const { data: spotifyStatus } = useSpotifyStatus();
-  const playback = useSpotifyPlayback(Boolean(spotifyStatus?.connected));
-  const { data: calStatus } = useCalendarStatus();
-  const { data: eventsData } = useTodayEvents(Boolean(calStatus?.connected));
+  const { items: agenda } = useTodayAgenda();
   const { data: routines = [] } = useRoutines();
   const { data: routineLogs = [] } = useRoutineLogs(date);
 
@@ -91,7 +86,8 @@ export default function AmbientPage() {
   const hour = new Date().getHours();
   const nightDim = settings.ambient.nightDimming && (hour >= 23 || hour < 6) ? 0.82 : 1;
 
-  const nextEvent = eventsData ? nextEventOf(eventsData.events) : null;
+  // routines surface as the reminder below, so only scheduled tasks here
+  const nextEvent = nextItemOf(agenda.filter((i) => i.kind === "task"));
   const openPriorities = priorities.filter((t) => !t.completed_at);
 
   // one subtle relevant reminder: the next routine due within the hour
@@ -115,19 +111,13 @@ export default function AmbientPage() {
     return null;
   })();
 
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: settings.location.timezone,
-  });
-
   return (
     <main
       className="fixed inset-0 z-10 flex cursor-default flex-col items-center justify-center"
       style={{ filter: `brightness(${nightDim})` }}
       onDoubleClick={() => router.push("/today")}
     >
+      <h1 className="sr-only">Ambient</h1>
       <div
         className="flex flex-col items-center gap-8 transition-transform duration-[3000ms] ease-linear"
         style={{ transform: `translate(${drift.x}px, ${drift.y}px)` }}
@@ -138,37 +128,17 @@ export default function AmbientPage() {
             <>
               <span aria-hidden className="text-ink-faint">·</span>
               <WeatherChip />
-              {nextEvent?.startsAt && (
+              {nextEvent?.time && (
                 <>
                   <span aria-hidden className="text-ink-faint">·</span>
                   <span className="tnum">
-                    {fmt.format(new Date(nextEvent.startsAt))} {nextEvent.title}
+                    {nextEvent.time} {nextEvent.title}
                   </span>
                 </>
               )}
             </>
           }
         />
-
-        {playback.track && (
-          <div className="fade flex items-center gap-3.5">
-            {playback.track.albumArt && (
-              // eslint-disable-next-line @next/next/no-img-element -- Spotify CDN artwork must be hotlinked per their terms
-              <img
-                src={playback.track.albumArt}
-                alt=""
-                className="h-12 w-12 rounded-lg border border-line object-cover"
-              />
-            )}
-            <div className="text-left">
-              <p className="text-sm text-ink-dim">{playback.track.name}</p>
-              <p className="flex items-center gap-1.5 text-[12px] text-ink-faint">
-                <IconSpotify size={11} />
-                {playback.track.artists}
-              </p>
-            </div>
-          </div>
-        )}
 
         {openPriorities.length > 0 && (
           <ol className="flex flex-col items-center gap-1.5">

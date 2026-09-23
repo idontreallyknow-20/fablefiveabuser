@@ -2,9 +2,8 @@
 
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import type { Tables, TablesInsert, TablesUpdate } from "@/lib/db/types";
-import { runOrQueue } from "@/lib/offline/outbox";
 import { useToast } from "@/components/ui/Toast";
 
 export type Task = Tables<"tasks">;
@@ -27,7 +26,7 @@ export function tomorrowISO(): string {
 }
 
 async function userId() {
-  const supabase = supabaseBrowser();
+  const supabase = localDb();
   // session is local-first, so this also works while offline
   const {
     data: { session },
@@ -40,7 +39,7 @@ async function userId() {
 export function useTasksRealtime() {
   const qc = useQueryClient();
   useEffect(() => {
-    const supabase = supabaseBrowser();
+    const supabase = localDb();
     const channel = supabase
       .channel("tasks-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => {
@@ -61,7 +60,7 @@ export function useTasks(filter?: {
   return useQuery({
     queryKey: ["tasks", filter ?? {}],
     queryFn: async (): Promise<Task[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       let q = supabase
         .from("tasks")
         .select("*")
@@ -83,7 +82,7 @@ export function usePriorities(date: string) {
   return useQuery({
     queryKey: ["tasks", "priorities", date],
     queryFn: async (): Promise<Task[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data, error } = await supabase
         .from("tasks")
         .select("*")
@@ -104,14 +103,12 @@ export function useCreateTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Omit<TablesInsert<"tasks">, "user_id">) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const uid = await userId();
-      // client-generated id so offline-queued follow-up edits can target it
+      // client-generated id so follow-up edits can target it right away
       const row = { ...input, id: input.id ?? crypto.randomUUID(), user_id: uid };
-      await runOrQueue({ table: "tasks", op: "insert", payload: row }, async () => {
-        const { error } = await supabase.from("tasks").insert(row);
-        if (error) throw error;
-      });
+      const { error } = await supabase.from("tasks").insert(row);
+      if (error) throw error;
       return row;
     },
     onSettled: () => invalidate(qc),
@@ -122,14 +119,9 @@ export function useUpdateTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: TablesUpdate<"tasks"> }) => {
-      const supabase = supabaseBrowser();
-      await runOrQueue(
-        { table: "tasks", op: "update", rowId: id, payload: patch },
-        async () => {
-          const { error } = await supabase.from("tasks").update(patch).eq("id", id);
-          if (error) throw error;
-        },
-      );
+      const supabase = localDb();
+      const { error } = await supabase.from("tasks").update(patch).eq("id", id);
+      if (error) throw error;
     },
     onMutate: async ({ id, patch }) => {
       await qc.cancelQueries({ queryKey: ["tasks"] });
@@ -155,18 +147,13 @@ export function useDeleteTask() {
   const { toast } = useToast();
   return useMutation({
     mutationFn: async (task: Task) => {
-      const supabase = supabaseBrowser();
-      await runOrQueue({ table: "tasks", op: "delete", rowId: task.id }, async () => {
-        const { error } = await supabase.from("tasks").delete().eq("id", task.id);
-        if (error) throw error;
-      });
+      const supabase = localDb();
+      const { error } = await supabase.from("tasks").delete().eq("id", task.id);
+      if (error) throw error;
       toast(task.title, "info", {
         label: "Undo",
         onClick: () => {
-          void runOrQueue({ table: "tasks", op: "insert", payload: task }, async () => {
-            const { error } = await supabase.from("tasks").insert(task);
-            if (error) throw error;
-          }).then(() => invalidate(qc));
+          void Promise.resolve(supabase.from("tasks").insert(task)).then(() => invalidate(qc));
         },
       });
     },

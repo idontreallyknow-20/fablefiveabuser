@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
 import type { Tables } from "@/lib/db/types";
 
 export type UserBackground = Tables<"user_backgrounds">;
@@ -14,7 +14,7 @@ export function useBackgrounds(opts?: { enabled?: boolean }) {
     queryKey: BACKGROUNDS_KEY,
     enabled: opts?.enabled ?? true,
     queryFn: async (): Promise<UserBackground[]> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data, error } = await supabase
         .from("user_backgrounds")
         .select("*")
@@ -30,7 +30,7 @@ export function useDeleteBackground() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (bg: Pick<UserBackground, "id" | "path">) => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { error: storageError } = await supabase.storage
         .from("backgrounds")
         .remove([bg.path]);
@@ -57,7 +57,7 @@ export function useBackgroundUrl(path: string | null | undefined) {
     gcTime: SIGNED_URL_STALE_MS,
     retry: 2,
     queryFn: async (): Promise<string> => {
-      const supabase = supabaseBrowser();
+      const supabase = localDb();
       const { data, error } = await supabase.storage
         .from("backgrounds")
         .createSignedUrl(path!, SIGNED_URL_TTL_S);

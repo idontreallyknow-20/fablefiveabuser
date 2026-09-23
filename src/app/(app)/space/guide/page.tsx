@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { localDb } from "@/lib/local/client";
+import { todayISO } from "@/lib/data/tasks";
 import { useSettings } from "@/lib/settings/store";
 import { Segmented, Toggle } from "@/components/ui/Segmented";
 import { Button } from "@/components/ui/Button";
@@ -21,8 +22,8 @@ const CATEGORIES = [
 type CategoryKey = (typeof CATEGORIES)[number]["key"];
 
 async function collect(selected: Set<CategoryKey>): Promise<string> {
-  const supabase = supabaseBrowser();
-  const today = new Date().toISOString().slice(0, 10);
+  const supabase = localDb();
+  const today = todayISO();
   const parts: string[] = [];
 
   parts.push(
@@ -79,16 +80,17 @@ async function collect(selected: Set<CategoryKey>): Promise<string> {
   }
   if (selected.has("calendar")) {
     const { data } = await supabase
-      .from("calendar_events")
-      .select("title, starts_at, ends_at, all_day")
-      .gte("starts_at", `${today}T00:00:00`)
-      .lte("starts_at", `${today}T23:59:59`)
-      .order("starts_at");
+      .from("tasks")
+      .select("title, scheduled_at")
+      .gte("scheduled_at", `${today}T00:00:00`)
+      .lte("scheduled_at", `${today}T23:59:59`)
+      .order("scheduled_at");
+    const hhmm = (iso: string | null) =>
+      iso ? new Date(iso).toTimeString().slice(0, 5) : "";
     parts.push(
       "## Today's calendar\n" +
-        ((data ?? [])
-          .map((e) => `- ${e.all_day ? "All day" : e.starts_at?.slice(11, 16)} ${e.title}`)
-          .join("\n") || "No events synced"),
+        ((data ?? []).map((e) => `- ${hhmm(e.scheduled_at)} ${e.title}`).join("\n") ||
+          "Nothing scheduled"),
     );
   }
   if (selected.has("routines")) {

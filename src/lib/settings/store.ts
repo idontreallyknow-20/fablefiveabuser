@@ -55,7 +55,6 @@ export interface ModuleToggles {
   train: boolean;
   reflect: boolean;
   sounds: boolean;
-  teams: boolean;
 }
 
 export interface NutritionTargets {
@@ -89,7 +88,6 @@ export interface OrbitSettings {
   density: "compact" | "comfortable";
   weatherReactive: boolean;
   timeReactive: boolean;
-  albumGlow: boolean;
   autoSchedule: AutoSchedule;
   ambient: AmbientSettings;
   location: { name: string; lat: number; lon: number; timezone: string };
@@ -97,8 +95,6 @@ export interface OrbitSettings {
   pinLock: { enabled: boolean; hash: string };
   /** self-reported energy for today's Guide recommendations */
   energyToday: "low" | "medium" | "high" | null;
-  /** spotify uri of the playlist offered in focus mode */
-  focusPlaylistUri: string | null;
   /** free-form Today grid; null renders the default preset */
   todayLayout: TodayLayout | null;
   /** manual scene overrides; null follows reality */
@@ -126,7 +122,7 @@ export const DEFAULT_SETTINGS: OrbitSettings = {
     clockSeconds: false,
     contrast: "normal",
   },
-  modules: { train: true, reflect: true, sounds: true, teams: true },
+  modules: { train: true, reflect: true, sounds: true },
   nutrition: { calories: 2400, protein: 150, carbs: 250, fat: 80 },
   integrations: { discordWebhook: "" },
   motion: "balanced",
@@ -139,7 +135,6 @@ export const DEFAULT_SETTINGS: OrbitSettings = {
   density: "comfortable",
   weatherReactive: true,
   timeReactive: true,
-  albumGlow: true,
   autoSchedule: {
     enabled: false,
     followSun: true,
@@ -164,7 +159,6 @@ export const DEFAULT_SETTINGS: OrbitSettings = {
   quietHours: { enabled: true, start: "23:00", end: "08:00" },
   pinLock: { enabled: false, hash: "" },
   energyToday: null,
-  focusPlaylistUri: null,
   todayLayout: null,
   weatherOverride: null,
   phaseOverride: null,

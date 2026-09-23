@@ -12,9 +12,9 @@ import { AtmosphereCanvas } from "@/components/atmosphere/AtmosphereCanvas";
 import { Clock } from "@/components/today/Clock";
 import { WeatherChip } from "@/components/today/WeatherChip";
 import { Priorities } from "@/components/today/Priorities";
-import { PlayerCard } from "@/components/spotify/PlayerCard";
+import { LofiControl } from "@/components/soundboard/LofiControl";
 import { TodayEvents } from "@/components/calendar/TodayEvents";
-import { DisplayNerf, DisplayFitness, DisplaySpotifyExtras } from "@/components/displays/RoleWidgets";
+import { DisplayNerf, DisplayFitness } from "@/components/displays/RoleWidgets";
 
 export default function DisplayView({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -57,13 +57,16 @@ export default function DisplayView({ params }: { params: Promise<{ id: string }
         <AtmosphereCanvas key={themeOverride} themeOverride={themeOverride} />
       )}
       <main className="relative z-10 mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-center gap-10 px-8 py-12">
+        <h1 className="sr-only">{display.name}</h1>
         {display.role === "command" && (
           <>
             <Clock size="hero" meta={<><span aria-hidden className="text-ink-faint">·</span><WeatherChip /></>} />
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
               <Priorities />
               <div className="flex flex-col gap-3">
-                <PlayerCard />
+                <div className="surface p-5">
+                  <LofiControl />
+                </div>
                 <TodayEvents />
               </div>
             </div>
@@ -80,11 +83,12 @@ export default function DisplayView({ params }: { params: Promise<{ id: string }
           </>
         )}
 
-        {display.role === "spotify" && (
+        {display.role === "music" && (
           <div className="mx-auto w-full max-w-xl space-y-6">
             <Clock size="compact" />
-            <PlayerCard />
-            <DisplaySpotifyExtras />
+            <div className="surface p-5">
+              <LofiControl />
+            </div>
           </div>
         )}
 
@@ -119,7 +123,9 @@ export default function DisplayView({ params }: { params: Promise<{ id: string }
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
               <Priorities />
               <div className="flex flex-col gap-3">
-                <PlayerCard />
+                <div className="surface p-5">
+                  <LofiControl />
+                </div>
                 <TodayEvents />
               </div>
             </div>
